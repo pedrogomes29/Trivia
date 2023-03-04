@@ -74,7 +74,7 @@ void OnMult(int m_ar, int m_br)
 }
 
 // add code here for line x line matriz multiplication
-void  OnMultLine(double* pha, double* phb, double* phc, int m_1_cols, int m_1_lines, int m_2_cols,int m_2_lines,int i_offset=0,int j_offset=0,int k_offset=0,int bkSize=INT32_MAX/2)
+void  OnMultLine(double* pha, double* phb, double* phc, int m_1_cols, int m_1_lines, int m_2_cols,int m_2_lines,int i_offset=0,int j_offset=0,int k_offset=0,int bkSize=INT32_MAX/2,bool print_info=true)
 {
 	SYSTEMTIME Time1, Time2;
 	
@@ -93,7 +93,7 @@ void  OnMultLine(double* pha, double* phb, double* phc, int m_1_cols, int m_1_li
 		for(k=k_offset; k < min(k_offset + bkSize, m_1_cols); k++){	
 			temp = 0;
 			for(j=j_offset; j< min(j_offset + bkSize, m_2_cols); j++){	 
-				temp += pha[i*m_1_cols+k] * phb[j*m_2_cols+k];
+				temp += pha[i*m_1_cols+k] * phb[k*m_2_cols+j];
 			}
 			phc[i*m_2_cols+k]+=temp;
 		}
@@ -102,8 +102,10 @@ void  OnMultLine(double* pha, double* phb, double* phc, int m_1_cols, int m_1_li
 
 	
     Time2 = clock();
-	sprintf(st, "Time:%3.3f\n", (double)(Time2 - Time1) / CLOCKS_PER_SEC);
-	cout << st;
+	if(print_info){
+		sprintf(st, "Time:%3.3f\n", (double)(Time2 - Time1) / CLOCKS_PER_SEC);
+		cout << st;
+	}
 
 	
 	// display 10 elements of the result matrix tto verify correctness
@@ -116,15 +118,18 @@ void  OnMultLine(double* pha, double* phb, double* phc, int m_1_cols, int m_1_li
 		}
 		cout << endl;
 	}
+	
 
 	cout << endl;
 	*/
+	
 	
 
 }
 
 // add code here for block x block matriz multiplication
-void OnMultBlock(double* pha, double* phb, int m_1_cols, int m_1_lines, int m_2_cols,int m_2_lines, int bkSize) {
+void OnMultBlock(double* pha, double* phb,double* phc,int m_1_cols, int m_1_lines, int m_2_cols,int m_2_lines, int bkSize) {
+	
 	if (m_1_cols % bkSize != 0 && m_1_lines % bkSize != 0 && m_2_cols % bkSize != 0 && m_2_lines % bkSize != 0)
 		cout << "Invalid Block Size" << endl;
 
@@ -135,18 +140,21 @@ void OnMultBlock(double* pha, double* phb, int m_1_cols, int m_1_lines, int m_2_
     }
 
     // Allocate memory for the result matrix
-    double* phc = new double[m_1_lines * m_2_cols];
-    memset(phc, 0, sizeof(double) * m_1_lines * m_2_cols);
-
+	SYSTEMTIME Time1, Time2;
+	char st[100];
+	Time1 = clock();
     // Perform block-by-block matrix multiplication
-    for (int i = 0; i < m_1_lines; i += bkSize) {
-        for (int j = 0; j < m_2_cols; j += bkSize) {
-            for (int k = 0; k < m_1_cols; k += bkSize) {
+	for (int i = 0; i < m_1_lines; i += bkSize) {
+		for (int k = 0; k < m_1_cols; k += bkSize) {
+			for (int j = 0; j < m_2_cols; j += bkSize) {
                 // Multiply the current block of matrices
-				OnMultLine(pha,phb,phc,m_1_cols,m_1_lines,m_2_cols,m_2_lines,i,j,k,bkSize);
+				OnMultLine(pha,phb,phc,m_1_cols,m_1_lines,m_2_cols,m_2_lines,i,j,k,bkSize,false);
             }
         }
     }
+	Time2 = clock();
+	sprintf(st, "Time:%3.3f\n", (double)(Time2 - Time1) / CLOCKS_PER_SEC);
+	cout << st;
 
 /*
     // Print the result matrix
@@ -187,8 +195,8 @@ int main (int argc, char *argv[])
 	int lin, col, blockSize;
 	int op;
 
-	if(argc!=2 and argc!=3)
-		cerr << "Wrong number of arguments";
+	if(argc!=3 and argc!=4)
+		cerr << "Wrong number of arguments " << argc << endl;
 	
 	int EventSet = PAPI_NULL;
   	long long values[2];
@@ -257,7 +265,7 @@ int main (int argc, char *argv[])
 			break;
 		case 3:
 			blockSize = stoi(argv[3]);
-			OnMultBlock(pha,phb,lin,col,lin,col,blockSize);  
+			OnMultBlock(pha,phb,phc,lin,col,lin,col,blockSize);  
 			break;
 		default:
 			break;
