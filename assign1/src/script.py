@@ -2,7 +2,7 @@ import subprocess
 import time
 import csv
 
-versions = ["1","2"]
+versions = [1,2]
 mat_sizes = range(600, 3400, 400)
 keys = ['Size','Time','L1 DCM', 'L2 DCM', 'L2 DCA', 'L2 DCH','DOUBLE PRECISION FLOPS']
 
@@ -14,7 +14,7 @@ def parse_line(line):
 
 
 for version in versions:
-    with open(f"cpp_{version if version != 2 else version+'_a'}.csv", mode='w', newline='') as file:
+    with open(f"cpp_{version if version != 2 else str(version)+'_a'}.csv", mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(keys)
         for size in mat_sizes:
@@ -66,7 +66,7 @@ mat_sizes = range(4096, 12288, 2048)
 block_sizes = [128,256,512]
 
 for version in versions:
-    with open(f"cpp_{version if version != 2 else version+'_b'}.csv", mode='w', newline='') as file:
+    with open(f"cpp_{version if version != 2 else str(version)+'_b'}.csv", mode='w', newline='') as file:
         writer = csv.writer(file)
         if(version==3):
             keys.insert(1,"Block size")
