@@ -1,3 +1,7 @@
+## Report file
+
+[Report](assign1/doc/report_assign1.pdf)
+
 ## Install and Compile instructions
 
 - Install rust on your linux machine using the following command:
