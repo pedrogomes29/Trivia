@@ -6,6 +6,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Scanner;
 
 public class Server extends Thread
 {
@@ -71,17 +72,13 @@ public class Server extends Thread
     {
         Server server = new Server( 8080);
         server.startServer();
+        Scanner scanner = new Scanner(System.in);
+        String input;
 
-        // Automatically shutdown in 1 minute
-        try
-        {
-            Thread.sleep( 10000 );
-        }
-        catch( Exception e )
-        {
-            e.printStackTrace();
-        }
-
+        do {
+            System.out.println("Type 'close' to exit");
+            input = scanner.nextLine();
+        } while (!input.equals("close"));
 
         System.out.println("Server closed");
         server.stopServer();
