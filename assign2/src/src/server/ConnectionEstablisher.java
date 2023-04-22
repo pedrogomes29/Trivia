@@ -1,6 +1,7 @@
 package server;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Objects;
@@ -20,6 +21,10 @@ public class ConnectionEstablisher extends Thread{
         return "TOKEN_EXAMPLE";
     }
 
+    private boolean authenticateUser(String userName,String password){
+
+    }
+
     @Override
     public void run()
     {
@@ -29,28 +34,28 @@ public class ConnectionEstablisher extends Thread{
 
             // Get input and output streams
             BufferedReader in = new BufferedReader( new InputStreamReader( socket.getInputStream() ) );
-            PrintWriter out = new PrintWriter( socket.getOutputStream() );
+            PrintStream out = new PrintStream( socket.getOutputStream(),true);
 
-            out.println("REQUEST_TOKEN\n");
-            out.flush();
 
-            String answer = in.readLine();
-            if(Objects.equals(answer, "NO_TOKEN")){
-                System.out.println("TOKEN_"+generateToken()+"\n");
+            String clientMessage = in.readLine();
+            if(Objects.equals(clientMessage, "LOG_IN")){
+                String username = in.readLine();
+                String password = in.readLine();
             }
-            else if(answer.startsWith("TOKEN")){
-                String token = answer.split(" ") [1];
+            else if(Objects.equals(clientMessage, "REGISTER")){
+
+            }
+            else if(clientMessage.startsWith("TOKEN")){
+                String token = clientMessage.split(" ") [1];
                 if(is_token_valid(token)){
                     out.println("CONNECTION_ESTABLISHED");
                 }
                 else{
                     out.println("INVALID_TOKEN");
-                    run();
                 }
             }
             else{
                 out.println("INVALID_RESPONSE");
-                run();
             }
 
             in.close();
