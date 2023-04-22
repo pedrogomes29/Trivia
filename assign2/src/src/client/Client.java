@@ -16,7 +16,8 @@ public class Client {
 
     enum AuthenticationOption{
         LOG_IN,
-        REGISTER
+        REGISTER,
+        EXIT
     }
 
     public Client(String host,int port){
@@ -62,6 +63,7 @@ public class Client {
         return new String[]{username, password};
     }
 
+
     public static AuthenticationOption chooseAuthenticationOption(){
         Scanner scanner = new Scanner(System.in);
         String input;
@@ -69,66 +71,86 @@ public class Client {
             System.out.println("Choose an option:");
             System.out.println("1: Log in");
             System.out.println("2: Register");
-            System.out.println("Type 'close' to exit");
+            System.out.println("3. Close");
             input = scanner.nextLine();
-        } while (!input.equals("1") && !input.equals("2"));
+        } while (!input.equals("1") && !input.equals("2") && !input.equals("3"));
 
-       if(input.equals("1"))
-           return AuthenticationOption.LOG_IN;
-       else
-           return AuthenticationOption.REGISTER;
+        switch (input) {
+            case "1" -> {
+                return AuthenticationOption.LOG_IN;
+            }
+            case "2" -> {
+                return AuthenticationOption.REGISTER;
+            }
+            default -> {
+                return AuthenticationOption.EXIT;
+            }
+        }
     }
 
 
     public boolean authenticate_user(String username,String password) throws Exception {
-        String line = in.readLine();
-
-        if(!Objects.equals(line, "REQUEST_TOKEN"))
+        out.println("LOG_IN");
+        out.println("USERNAME "+ username);
+        out.println("PASSWORD " + password);
+        String serverResponse;
+        serverResponse = in.readLine();
+        String[] tokenMessage = serverResponse.split(" ");
+        if(tokenMessage.length!=2 || !Objects.equals(tokenMessage[0], "TOKEN"))
             return false;
-
-        if(token==null){
-            out.println("LOG_IN");
-            out.println("USERNAME "+ username);
-            out.println("PASSWORD " + password);
-            line = in.readLine();
-            String[] tokenMessage = line.split(" ");
-            if(tokenMessage.length!=2 || !Objects.equals(tokenMessage[0], "TOKEN"))
-                return false;
-            token = tokenMessage[1];
-            out.println("RECEIVED_TOKEN " + token);
-        }
-        line = in.readLine();
-        return Objects.equals(line, "CONNECTION_ESTABLISHED");
+        token = tokenMessage[1];
+        out.println("RECEIVED_TOKEN " + token);
+        serverResponse = in.readLine();
+        return Objects.equals(serverResponse, "CONNECTION_ESTABLISHED");
     }
 
-    public static void main( String[] args )
-    {
-        Client client = new Client ("localhost", 8080 );
-        AuthenticationOption option = chooseAuthenticationOption();
-        if(option==AuthenticationOption.LOG_IN) {
-            String username,password;
-            do {
-                String[] userCredentials = getUserCredentials();
-                username = userCredentials[0];
-                password = userCredentials[1];
-            }while(!client.authenticate_user(username,password))
-        }
-        String[] userCredentials = getUserCredentials();
-        String username =
-        boolean success = false;
+    public boolean register_user(String username,String password) throws Exception {
+        out.println("REGISTER");
+        out.println("USERNAME "+ username);
+        out.println("PASSWORD " + password);
+        String serverResponse;
+        serverResponse = in.readLine();
+        String[] tokenMessage = serverResponse.split(" ");
+        if(tokenMessage.length!=2 || !Objects.equals(tokenMessage[0], "TOKEN"))
+            return false;
+        token = tokenMessage[1];
+        out.println("RECEIVED_TOKEN " + token);
+        serverResponse = in.readLine();
+        return Objects.equals(serverResponse, "CONNECTION_ESTABLISHED");
+    }
+    public void establishConnection(){
         try
         {
-            success = client.establishConnection();
+            AuthenticationOption option = chooseAuthenticationOption();
+            if(option==AuthenticationOption.LOG_IN) {
+                String username,password;
+                do {
+                    String[] userCredentials = getUserCredentials();
+                    username = userCredentials[0];
+                    password = userCredentials[1];
+                }while(!this.authenticate_user(username,password));
+            }
+            if(option==AuthenticationOption.REGISTER) {
+                String username,password;
+                do {
+                    String[] userCredentials = getUserCredentials();
+                    username = userCredentials[0];
+                    password = userCredentials[1];
+                }while(!this.register_user(username,password));
+            }
         }
         catch( Exception e )
         {
             e.printStackTrace();
         }
+    }
+    public static void main( String[] args )
+    {
+        Client client = new Client ("localhost", 8080 );
 
-        if(success)
-            System.out.println("Succesfully established connection: "+ client.token);
-        else
-            System.out.println("Error establishing connection");
+        client.establishConnection();
+
+        System.out.println("Succesfully established connection: "+ client.token);
 
         client.closeConnection();
     }

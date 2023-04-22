@@ -3,6 +3,7 @@ package server;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,12 +19,18 @@ public class Server extends Thread
     private HashMap<String,Integer> tokenToQueuePosition;
     private List<Player> players_waiting;
 
+    private PlayerDatabase db;
+
+    private SecureRandom saltGenerator;
+
     private boolean running = false;
 
     public Server( int port )
     {
         this.port = port;
         this.players_waiting = new ArrayList<>();
+        this.saltGenerator = new SecureRandom();
+        this.db = new PlayerDatabase("database.txt");
     }
 
     public void startServer()
@@ -63,7 +70,7 @@ public class Server extends Thread
                 Socket socket = serverSocket.accept();
 
                 // Pass the socket to the RequestHandler thread for processing
-                ConnectionEstablisher connectionEstablisher = new ConnectionEstablisher(socket);
+                ConnectionEstablisher connectionEstablisher = new ConnectionEstablisher(socket,db);
                 connectionEstablisher.start();
             }
             catch (IOException e)

@@ -2,15 +2,18 @@ package server;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Objects;
+import java.util.UUID;
 
 public class ConnectionEstablisher extends Thread{
     private final Socket socket;
-    ConnectionEstablisher( Socket socket )
+    private final PlayerDatabase db;
+
+    ConnectionEstablisher( Socket socket ,PlayerDatabase db)
     {
         this.socket = socket;
+        this.db = db;
     }
 
     private boolean is_token_valid(String token){
@@ -18,19 +21,15 @@ public class ConnectionEstablisher extends Thread{
     }
 
     private String generateToken(){
-        return "TOKEN_EXAMPLE";
+        return UUID.randomUUID().toString() + "-" + System.currentTimeMillis();
     }
 
-    private boolean authenticateUser(String userName,String password){
-
-    }
 
     @Override
     public void run()
     {
         try
         {
-            System.out.println( "Received a connection" );
 
             // Get input and output streams
             BufferedReader in = new BufferedReader( new InputStreamReader( socket.getInputStream() ) );
@@ -39,16 +38,58 @@ public class ConnectionEstablisher extends Thread{
 
             String clientMessage = in.readLine();
             if(Objects.equals(clientMessage, "LOG_IN")){
-                String username = in.readLine();
-                String password = in.readLine();
+                String[] usernameMessage = in.readLine().split(" ");
+                String[] passwordMessage = in.readLine().split(" ");
+
+                if(usernameMessage.length!=2 || !Objects.equals(usernameMessage[0], "USERNAME")  ||
+                        passwordMessage.length!=2 || !Objects.equals(passwordMessage[0], "PASSWORD") )
+                    out.println("INVALID_LOG_IN");
+                else {
+                    String username = usernameMessage[1];
+                    String password = passwordMessage[1];
+                    if (db.authenticateUser(username, password)) {
+                        String token = generateToken();
+                        out.println("TOKEN " + token);
+                        clientMessage = in.readLine();
+                        if (!Objects.equals(clientMessage, "RECEIVED_TOKEN " + token))
+                            out.println("WRONG_TOKEN");
+                        else {
+                            out.println("CONNECTION_ESTABLISHED");
+                        }
+                    } else {
+                        out.println("INVALID_LOG_IN");
+                    }
+                }
             }
             else if(Objects.equals(clientMessage, "REGISTER")){
+                String[] usernameMessage = in.readLine().split(" ");
+                String[] passwordMessage = in.readLine().split(" ");
 
+                if(usernameMessage.length!=2 || !Objects.equals(usernameMessage[0], "USERNAME")  ||
+                        passwordMessage.length!=2 || !Objects.equals(passwordMessage[0], "PASSWORD") )
+                    out.println("INVALID_REGISTER");
+                else {
+                    String username = usernameMessage[1];
+                    String password = passwordMessage[1];
+                    if (db.addUser(username, password)) {
+                        String token = generateToken();
+                        out.println("TOKEN " + token);
+                        clientMessage = in.readLine();
+                        if (!Objects.equals(clientMessage, "RECEIVED_TOKEN " + token))
+                            out.println("WRONG_TOKEN");
+                        else {
+                            out.println("CONNECTION_ESTABLISHED");
+                        }
+                    } else {
+                        out.println("INVALID_REGISTER");
+                    }
+                }
             }
             else if(clientMessage.startsWith("TOKEN")){
                 String token = clientMessage.split(" ") [1];
                 if(is_token_valid(token)){
                     out.println("CONNECTION_ESTABLISHED");
+
                 }
                 else{
                     out.println("INVALID_TOKEN");
@@ -58,10 +99,6 @@ public class ConnectionEstablisher extends Thread{
                 out.println("INVALID_RESPONSE");
             }
 
-            in.close();
-            out.close();
-
-            System.out.println( "Connection closed" );
         }
         catch( Exception e )
         {
