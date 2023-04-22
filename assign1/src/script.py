@@ -60,7 +60,7 @@ for version in versions:
             print(measures)
             writer.writerow(list(measures.values()))
 
-
+"""
 versions = [2,3]
 mat_sizes = range(4096, 12288, 2048)
 block_sizes = [128,256,512]
@@ -113,3 +113,4 @@ for version in versions:
                     writer.writerow(list(measures.values()))
 
 
+"""

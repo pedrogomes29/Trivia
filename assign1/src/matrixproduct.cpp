@@ -199,7 +199,7 @@
 			cerr << "Wrong number of arguments " << argc << endl;
 		
 		int EventSet = PAPI_NULL;
-		long long values[2];
+		long long values[4];
 		int ret;
 		
 
