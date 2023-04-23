@@ -17,7 +17,7 @@ public class Server extends Thread
     private final int port;
 
 
-    private HashMap<String,Integer> tokenToQueuePosition;
+    private HashMap<String,String> tokenToUsername;
     private List<Player> players_waiting;
 
     private PlayerDatabase db;
@@ -32,6 +32,7 @@ public class Server extends Thread
         this.players_waiting = new ArrayList<>();
         this.saltGenerator = new SecureRandom();
         this.db = new PlayerDatabase("database.txt");
+        this.tokenToUsername = new HashMap<>();
     }
 
     public void startServer()
@@ -71,7 +72,7 @@ public class Server extends Thread
                 Socket socket = serverSocket.accept();
 
                 // Pass the socket to the RequestHandler thread for processing
-                ConnectionEstablisher connectionEstablisher = new ConnectionEstablisher(socket,db);
+                ConnectionEstablisher connectionEstablisher = new ConnectionEstablisher(socket,db,tokenToUsername,players_waiting);
                 connectionEstablisher.start();
             }
             catch (IOException e)

@@ -21,6 +21,8 @@ public class PlayerDatabase {
     private static final int MAX_SCORE_SIZE = 4;
     private static final long MAX_RECORD_SIZE = MAX_USERNAME_SIZE + 1 + PASSWORD_SIZE + 1 + MAX_SCORE_SIZE + System.getProperty("line.separator").length();
 
+
+
     private int numPlayersSeekOffset;
 
     public PlayerDatabase(String filename){
@@ -162,6 +164,36 @@ public class PlayerDatabase {
         return false;
     }
 
+    public int getSkillLevel(String username) {
+        try {
+            long low = 0;
+            long high = numPlayers - 1;
+
+            while (low <= high) {
+                long mid = (low + high) / 2;
+                file.seek(numPlayersSeekOffset +  mid * MAX_RECORD_SIZE);
+                byte[] buffer = new byte[(int) MAX_RECORD_SIZE];
+                file.readFully(buffer);
+                String record = new String(buffer);
+                String[] fields = record.split(",");
+                String recordUsername = fields[0].trim();
+                int cmp = username.compareTo(recordUsername);
+
+                if (cmp < 0) {
+                    high = mid - 1;
+                } else if (cmp > 0) {
+                    low = mid + 1;
+                } else {
+                    String skillLevel = fields[2].trim();
+                    return Integer.parseInt(skillLevel);
+                }
+            }
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
+        return -1;
+    }
     public void close() throws IOException {
         file.close();
     }
