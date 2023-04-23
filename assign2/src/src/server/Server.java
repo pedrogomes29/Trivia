@@ -11,7 +11,8 @@ import java.util.Scanner;
 
 public class Server extends Thread
 {
-    final int NUMBER_OF_PLAYERS_PER_GAME = 4;
+    final int NUMBER_OF_PLAYERS_PER_GAME = 2;
+    final int NUMBER_OF_ROUNDS = 5;
     private ServerSocket serverSocket;
     private final int port;
 
@@ -119,10 +120,8 @@ public class Server extends Thread
                             if (matchedPlayers.size() == NUMBER_OF_PLAYERS_PER_GAME) {
                                 players_waiting.removeAll(matchedPlayers);
 
-                                // Start a game with the matched players
-                                // You can replace the following line with the logic for starting a game
-                                System.out.println("Starting a game with matched players");
-
+                                Game game = new Game(matchedPlayers,NUMBER_OF_ROUNDS);
+                                game.run();
                                 break;
                             }
                         }

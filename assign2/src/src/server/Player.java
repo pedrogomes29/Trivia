@@ -1,6 +1,13 @@
 package server;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.net.Socket;
+import java.nio.channels.IllegalBlockingModeException;
+import java.util.List;
+import java.io.OutputStream;
+import java.io.PrintWriter;
 
 public class Player {
     private Socket socket;
@@ -30,4 +37,32 @@ public class Player {
         maxSkillGap++;
     }
 
+
+    public void increaseSkillLevel(int elo) { skillLevel += elo;}
+
+    public void decreaseSkillLevel(int elo) { skillLevel += elo;}
+
+    public void sendQuestion(List<String> question) {
+        try {
+            OutputStream outputStream = socket.getOutputStream();
+            PrintWriter writer = new PrintWriter(outputStream, true);
+
+            for (String line : question) {
+                writer.println(line);
+            }
+        } catch (IOException e) {
+            System.err.println("Error sending question to player: " + e.getMessage());
+        }
+    }
+    public String receiveAnswer() {
+        try {
+            DataInputStream dataInputStream = new DataInputStream(socket.getInputStream());
+            String answer = dataInputStream.readUTF();
+            System.out.println(answer);
+            return answer;
+        } catch (IOException e) {
+            System.err.println("Error receiving answer from player: " + e.getMessage());
+        }
+        return null;
+    }
 }
