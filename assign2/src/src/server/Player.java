@@ -12,15 +12,20 @@ import java.io.PrintWriter;
 public class Player {
     private Socket socket;
     private int skillLevel;
-
+    private String username;
     private int maxSkillGap;
 
-    public Player(Socket socket, int skillLevel) {
+    public Player(Socket socket, int skillLevel,String username) {
         this.socket = socket;
         this.skillLevel = skillLevel;
         this.maxSkillGap = 5;
+        this.username = username;
     }
 
+
+    public String getUsername(){
+        return username;
+    }
     public Socket getSocket() {
         return socket;
     }

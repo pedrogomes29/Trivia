@@ -17,12 +17,14 @@ public class Server extends Thread
     private final int port;
 
 
-    private HashMap<String,String> tokenToUsername;
-    private List<Player> players_waiting;
+    public HashMap<String,String> tokenToUsername;
+    public List<Player> players_waiting;
 
-    private PlayerDatabase db;
+    public List<Game> games;
 
-    private SecureRandom saltGenerator;
+    public PlayerDatabase db;
+
+    public SecureRandom saltGenerator;
 
     private boolean running = false;
 
@@ -48,6 +50,15 @@ public class Server extends Thread
         }
     }
 
+
+    public boolean playerIsPlaying(Player player){
+        for(Game game:games){
+            if(game.gameHasPlayer(player)) {
+                return true;
+            }
+        }
+        return false;
+    }
     public void stopServer()
     {
         running = false;
@@ -72,7 +83,7 @@ public class Server extends Thread
                 Socket socket = serverSocket.accept();
                 System.out.println(players_waiting.size());
                 // Pass the socket to the RequestHandler thread for processing
-                ConnectionEstablisher connectionEstablisher = new ConnectionEstablisher(socket,db,tokenToUsername,players_waiting);
+                ConnectionEstablisher connectionEstablisher = new ConnectionEstablisher(socket,this);
                 connectionEstablisher.start();
             }
             catch (IOException e)
@@ -121,6 +132,7 @@ public class Server extends Thread
                                 players_waiting.removeAll(matchedPlayers);
 
                                 Game game = new Game(matchedPlayers,NUMBER_OF_ROUNDS);
+                                games.add(game);
                                 game.run();
                                 break;
                             }
