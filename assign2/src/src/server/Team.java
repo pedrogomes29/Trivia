@@ -1,6 +1,7 @@
 package server;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -22,7 +23,19 @@ public class Team {
         this.playersThread = Executors.newFixedThreadPool(players.size());
     }
 
-    public List<Player> getPlayers() {
+    public boolean teamHasPlayer(Player newPlayer){
+        for(int i=0;i<players.size();i++) {
+            if (Objects.equals(players.get(i).getUsername(), newPlayer.getUsername())) {
+                players.set(i, newPlayer);
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+
+    public List<Player> getPlayers(){
         return players;
     }
 

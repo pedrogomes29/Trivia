@@ -197,8 +197,10 @@ public class Client {
             System.out.println("Lost connection..");
             e.printStackTrace();
             reestablishConnection();
-            System.out.println("Restablished connection");
-            play();
+            if(gameState == GameState.PLAYING) {
+                System.out.println("Restablished connection");
+                //voltar a jogar
+            }
         }
     }
 
@@ -221,6 +223,7 @@ public class Client {
                 else if (Objects.equals(serverResponse, "INVALID_TOKEN")) {
                     token=null;
                     gameState = GameState.ESTABLISHING_CONNECTION;
+                    System.out.println("We regret to inform that you lost the connection to the game and it can't be reconnected");
                     establishConnection();
                 }
                 else{
@@ -319,6 +322,7 @@ public class Client {
 
             } catch (Exception e) {
                 e.printStackTrace();
+                reestablishConnection();
             }
         }
     }
@@ -326,9 +330,13 @@ public class Client {
     {
         Client client = new Client ("localhost", 8080 );
 
-        client.establishConnection();
-        if(client.gameState==GameState.PLAYING)
-            client.play();
+        while(client.gameState!=GameState.QUIT) {
+            if(client.gameState==GameState.ESTABLISHING_CONNECTION)
+                client.establishConnection();
+            if(client.gameState==GameState.PLAYING)
+                client.play();
+        }
+
         client.closeConnection();
     }
 }

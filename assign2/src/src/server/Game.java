@@ -81,6 +81,14 @@ public class Game{
         }
     }
 
+    public boolean gameHasPlayer(Player player){
+        for(Team team:teams){
+            if(team.teamHasPlayer(player))
+                return true;
+        }
+        return false;
+    }
+
     private void sendQuestionToTeams(List<String> question) {
         for (Team team : teams) {
             teamsThread.execute(()-> team.sendQuestion(question));

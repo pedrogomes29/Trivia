@@ -10,18 +10,14 @@ import java.util.UUID;
 
 public class ConnectionEstablisher extends Thread{
     private final Socket socket;
-    private final PlayerDatabase db;
-    private HashMap<String,String> tokenToUsername;
-    private List<Player> players_waiting;
+    private final Server server;
 
     private static final int MAX_NR_ATTEMPTS = 10;
 
-    ConnectionEstablisher(Socket socket , PlayerDatabase db, HashMap<String,String> tokenToUsername,List<Player> players_waiting)
+    ConnectionEstablisher(Socket socket , Server server)
     {
         this.socket = socket;
-        this.db = db;
-        this.tokenToUsername = tokenToUsername;
-        this.players_waiting = players_waiting;
+        this.server = server;
     }
 
 
@@ -77,9 +73,9 @@ public class ConnectionEstablisher extends Thread{
                     else {
                         username = usernameMessage[1];
                         String password = passwordMessage[1];
-                        if (db.authenticateUser(username, password)) {
+                        if (server.db.authenticateUser(username, password)) {
                             String token = generateToken();
-                            tokenToUsername.put(username,token);
+                            server.tokenToUsername.put(username,token);
                             out.println("TOKEN " + token);
                             clientMessage = in.readLine();
                             if (!Objects.equals(clientMessage, "RECEIVED_TOKEN " + token))
@@ -103,9 +99,9 @@ public class ConnectionEstablisher extends Thread{
                     else {
                         username = usernameMessage[1];
                         String password = passwordMessage[1];
-                        if (db.addUser(username, password)) {
+                        if (server.db.addUser(username, password)) {
                             String token = generateToken();
-                            tokenToUsername.put(username,token);
+                            server.tokenToUsername.put(username,token);
                             out.println("TOKEN " + token);
                             clientMessage = in.readLine();
                             if (!Objects.equals(clientMessage, "RECEIVED_TOKEN " + token))
@@ -121,7 +117,7 @@ public class ConnectionEstablisher extends Thread{
                 }
                 else if(clientMessage.startsWith("TOKEN")){
                     String token = clientMessage.split(" ") [1];
-                    username = tokenToUsername.get(token);
+                    username = server.tokenToUsername.get(token);
 
                     if(username!=null){
                         out.println("CONNECTION_ESTABLISHED");
@@ -144,7 +140,6 @@ public class ConnectionEstablisher extends Thread{
             {
                 nrAttempts = MAX_NR_ATTEMPTS;
                 out.println("INTERNAL_SERVER_ERROR");
-                e.printStackTrace();
             }
 
         }
@@ -162,11 +157,11 @@ public class ConnectionEstablisher extends Thread{
         }
         else {
 
-            int skilLevel = db.getSkillLevel(username);
+            int skilLevel = server.db.getSkillLevel(username);
 
-            Player player = new Player(this.socket, skilLevel);
-
-            players_waiting.add(player);
+            Player player = new Player(this.socket, skilLevel,username);
+            if(!server.playerIsPlaying(player)) //function already replaces player if it was playing
+                server.players_waiting.add(player);
         }
 
     }
