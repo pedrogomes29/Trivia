@@ -10,16 +10,31 @@ import java.util.List;
 import java.util.Scanner;
 
 public class Game {
-    private List<Socket> userSockets;
-    private List<List<String>> questions;
+    private final List<List<String>> questions;
 
     private final int numberOfRounds;
-    public Game(int players, List<Socket> userSockets) {
-        this.userSockets = userSockets;
+    private final List<Player> players;
+    private final List<Player> teamA;
+    private final List<Player> teamB;
+    public Game(List<Player> players, int numberOfRounds) {
+        this.players = players;
+        this.numberOfRounds = numberOfRounds;
+        this.teamA = new ArrayList<>();
+        this.teamB = new ArrayList<>();
+        this.separatePlayersIntoTeams();
         this.questions = new ArrayList<>();
         this.readQuestionsFromFile();
-        this.numberOfRounds = 5;
         this.answerQuestion();
+    }
+
+    private void separatePlayersIntoTeams() {
+        for (int i = 0; i < players.size(); i++) {
+            if (i % 2 == 0) {
+                teamA.add(players.get(i));
+            } else {
+                teamB.add(players.get(i));
+            }
+        }
     }
 
     private void readQuestionsFromFile() {
@@ -41,12 +56,12 @@ public class Game {
     }
 
     public void start() {
-        System.out.println("Starting game with " + userSockets.size() + " players");
+        System.out.println("Starting game with " + players.size() + " players");
     }
 
     public static void main(String[] args) {
-        List<Socket> userSockets = new ArrayList<>();
-        Game game = new Game(2, userSockets);
+        List<Player> players = new ArrayList<>();
+        Game game = new Game(players, 10);
     }
     public boolean answerQuestion(){
         //Get a random question
