@@ -69,7 +69,7 @@ public class Server extends Thread
 
                 // Call accept() to receive the next connection
                 Socket socket = serverSocket.accept();
-
+                System.out.println(players_waiting.size());
                 // Pass the socket to the RequestHandler thread for processing
                 ConnectionEstablisher connectionEstablisher = new ConnectionEstablisher(socket,db,tokenToUsername,players_waiting);
                 connectionEstablisher.start();

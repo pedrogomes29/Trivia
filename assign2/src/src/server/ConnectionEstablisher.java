@@ -144,7 +144,6 @@ public class ConnectionEstablisher extends Thread{
             {
                 nrAttempts = MAX_NR_ATTEMPTS;
                 out.println("INTERNAL_SERVER_ERROR");
-                e.printStackTrace();
             }
 
         }
