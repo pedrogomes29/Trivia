@@ -35,6 +35,7 @@ public class Server extends Thread
         this.saltGenerator = new SecureRandom();
         this.db = new PlayerDatabase("database.txt");
         this.tokenToUsername = new HashMap<>();
+        this.games = new ArrayList<>();
     }
 
     public void startServer()

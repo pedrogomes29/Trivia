@@ -4,7 +4,6 @@ import java.io.RandomAccessFile;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.Objects;
 
 public class PlayerDatabase {
@@ -16,10 +15,10 @@ public class PlayerDatabase {
 
     private static final int MAX_USERNAME_SIZE = 20;
 
-    private static final int PASSWORD_SIZE = 64;
+    private static final int PASSWORD_SIZE = 97;
 
     private static final int MAX_SCORE_SIZE = 4;
-    private static final long MAX_RECORD_SIZE = MAX_USERNAME_SIZE + 1 + PASSWORD_SIZE + 1 + MAX_SCORE_SIZE + System.getProperty("line.separator").length();
+    private static final long MAX_RECORD_SIZE = MAX_USERNAME_SIZE + 1 + MAX_SCORE_SIZE + 1 + PASSWORD_SIZE + System.getProperty("line.separator").length();
 
 
 
@@ -58,7 +57,7 @@ public class PlayerDatabase {
                     low = mid + 1;
                 } else {
                     String recordPassword = fields[1].trim();
-                    return Objects.equals(password, recordPassword);
+                    return verifyPassword(password,recordPassword);
                 }
             }
         }
@@ -69,19 +68,74 @@ public class PlayerDatabase {
         return false;
     }
 
-    public String bcrypt(String password) throws NoSuchAlgorithmException {
+
+
+    public static byte[] hexToBytes(String hexString){
+        byte[] bytes = new byte[hexString.length() / 2];
+        for (int i = 0; i < hexString.length(); i += 2) {
+            String hex = hexString.substring(i, i + 2);
+            byte b = (byte) Integer.parseInt(hex, 16);
+            bytes[i / 2] = b;
+        }
+        return bytes;
+    }
+
+    public static String bytesToHex(byte[] bytes){
+        StringBuilder hex = new StringBuilder();
+        for (int i = 0; i < bytes.length; i++) {
+            hex.append(Integer.toString((bytes[i] & 0xff) + 0x100, 16)
+                    .substring(1));
+        }
+        return hex.toString();
+    }
+
+
+    public static String sha256WithSalt(String password) throws NoSuchAlgorithmException {
+        SecureRandom saltGenerator = new SecureRandom();
         byte[] salt = new byte[16];
         saltGenerator.nextBytes(salt);
+        StringBuilder saltString = new StringBuilder();
+        for (int i = 0; i < salt.length; i++) {
+            saltString.append(Integer.toString((salt[i] & 0xff) + 0x100, 16)
+                    .substring(1));
+        }
+        String generatedPassword = null;
 
-        // Hash the password with the salt using SHA-512
-        MessageDigest md = MessageDigest.getInstance("SHA-512");
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            md.update(salt);
+            byte[] bytes = md.digest(password.getBytes());
+            generatedPassword = bytesToHex(bytes);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+
+        return saltString.toString() + ":" + generatedPassword;
+    }
+
+
+    public static boolean verifyPassword(String password,String password_in_db) throws NoSuchAlgorithmException{
+        String[] saltAndPassword = password_in_db.split(":");
+        String saltString = saltAndPassword[0];
+        String password_without_salt = saltAndPassword[1].trim();
+
+
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+
+
+        byte[] salt = hexToBytes(saltString);
+
+
         md.update(salt);
-        byte[] hashedPassword = md.digest(password.getBytes());
+        byte[] bytes = md.digest(password.getBytes());
 
-        // Encode the hashed password as a Base64-encoded string
-        return Base64.getEncoder().encodeToString(hashedPassword);
+        String generatedPassword = bytesToHex(bytes);
+
+
+        return password_without_salt.equals(generatedPassword);
 
     }
+
     private boolean insertTextAtPosition(byte[] text,long insertPos){
         try {
             long eof = file.length();
@@ -138,10 +192,8 @@ public class PlayerDatabase {
                 username = String.format("%" + (MAX_USERNAME_SIZE - username.length()) + "s", "") + username;
             }
 
-            if (password.length() < PASSWORD_SIZE)
-                password = String.format("%" + (PASSWORD_SIZE - password.length()) + "s", "") + password;
 
-            String record = String.format("%s,%s, %s" + System.lineSeparator(), username, password, 100);
+            String record = String.format("%s,%s, %s" + System.lineSeparator(), username, sha256WithSalt(password), 100);
             byte[] recordBytes = record.getBytes();
 
             this.insertTextAtPosition(recordBytes,insertPos);
