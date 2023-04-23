@@ -1,40 +1,50 @@
 package server;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class Game {
+public class Game{
     private final List<List<String>> questions;
 
+    private ExecutorService teamsThread;
     private final int numberOfRounds;
     private final List<Player> players;
-    private final List<Player> teamA;
-    private final List<Player> teamB;
-    public Game(List<Player> players, int numberOfRounds) {
+
+    private final List<Team> teams;
+
+    public Game(List<Player> players, int numberOfRounds){
         this.players = players;
+        this.teams = new ArrayList<>();
         this.numberOfRounds = numberOfRounds;
-        this.teamA = new ArrayList<>();
-        this.teamB = new ArrayList<>();
         this.separatePlayersIntoTeams();
         this.questions = new ArrayList<>();
         this.readQuestionsFromFile();
-        this.answerQuestion();
     }
 
     private void separatePlayersIntoTeams() {
+        players.sort(Comparator.comparingInt(Player::getSkillLevel));
+        this.teamsThread = Executors.newFixedThreadPool(2);
+        List<Player> teamAPlayers = new ArrayList<>();
+        List<Player> teamBPlayers = new ArrayList<>();
         for (int i = 0; i < players.size(); i++) {
             if (i % 2 == 0) {
-                teamA.add(players.get(i));
+                teamAPlayers.add(players.get(i));
             } else {
-                teamB.add(players.get(i));
+                teamBPlayers.add(players.get(i));
             }
         }
+        Team teamA = new Team(teamAPlayers);
+        Team teamB = new Team(teamBPlayers);
+        this.teams.add(teamA);
+        this.teams.add(teamB);
     }
 
     private void readQuestionsFromFile() {
@@ -63,21 +73,17 @@ public class Game {
         List<Player> players = new ArrayList<>();
         Game game = new Game(players, 10);
     }
-    public boolean answerQuestion(){
-        //Get a random question
-        int random = (int) (Math.random() * questions.size());
-        List<String> question = questions.get(random);
-        Scanner scanner = new Scanner(System.in);
-        System.out.println(question.get(0));
-        System.out.print("Your answer:");
-        String answer = scanner.nextLine();
-        if(answer.equalsIgnoreCase(question.get(1))){
-            System.out.println("Correct!");
-            return true;}
-        else{
-            System.out.println("Incorrect!");
-            System.out.println("The correct answer was: " + question.get(1));
-            return false;
+    public void run() {
+        for (int i = 0; i < numberOfRounds; i++) {
+            int random = (int) (Math.random() * questions.size());
+            List<String> question = questions.get(random);
+            sendQuestionToTeams(question);
+        }
+    }
+
+    private void sendQuestionToTeams(List<String> question) {
+        for (Team team : teams) {
+            teamsThread.execute(()-> team.sendQuestion(question));
         }
     }
 }
