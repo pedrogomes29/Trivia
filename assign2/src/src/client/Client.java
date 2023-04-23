@@ -178,7 +178,19 @@ public class Client {
     public void play(){
         System.out.println("Waiting for enough players to start a game...");
         try{
-            in.readLine();
+            while (true) {
+                String serverText = in.readLine();
+                System.out.println(serverText);
+                if (Objects.equals(serverText, "GAME_OVER")) {
+                    break;
+                }
+                if (serverText != null) {
+                    System.out.print("Enter your answer:");
+                    Scanner scanner = new Scanner(System.in);
+                    String input = scanner.nextLine();
+                    out.println(input);
+                }
+            }
         }
         catch( Exception e )
         {
