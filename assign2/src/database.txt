@@ -1,4 +1,4 @@
-11
+13
               Afonso,                                                           12345, 100
               JoaoRR,                                                             123, 100
       LebronJamesFan,                                                             123, 100
@@ -10,3 +10,5 @@
                  NNN,                                                             123, 100
               Otavio,                                                             123, 100
                Pedro,                                                             123, 100
+              QuaQua,                                                             123, 100
+               Zebra,                                                             123, 100
