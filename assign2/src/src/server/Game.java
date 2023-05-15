@@ -11,7 +11,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class Game{
+public class Game extends Thread{
     private final List<List<String>> questions;
 
     private ExecutorService teamsThread;
@@ -69,10 +69,7 @@ public class Game{
         System.out.println("Starting game with " + players.size() + " players");
     }
 
-    public static void main(String[] args) {
-        List<Player> players = new ArrayList<>();
-        Game game = new Game(players, 10);
-    }
+    @Override
     public void run() {
         for (int i = 0; i < numberOfRounds; i++) {
             int random = (int) (Math.random() * questions.size());

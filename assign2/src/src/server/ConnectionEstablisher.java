@@ -3,8 +3,6 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.Socket;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -13,6 +11,11 @@ public class ConnectionEstablisher extends Thread{
     private final Server server;
 
     private static final int MAX_NR_ATTEMPTS = 10;
+
+
+
+
+
 
     ConnectionEstablisher(Socket socket , Server server)
     {
@@ -75,7 +78,7 @@ public class ConnectionEstablisher extends Thread{
                         String password = passwordMessage[1];
                         if (server.db.authenticateUser(username, password)) {
                             String token = generateToken();
-                            server.tokenToUsername.put(username,token);
+                            server.tokenToUsername.put(token,username);
                             out.println("TOKEN " + token);
                             clientMessage = in.readLine();
                             if (!Objects.equals(clientMessage, "RECEIVED_TOKEN " + token))
@@ -101,7 +104,7 @@ public class ConnectionEstablisher extends Thread{
                         String password = passwordMessage[1];
                         if (server.db.addUser(username, password)) {
                             String token = generateToken();
-                            server.tokenToUsername.put(username,token);
+                            server.tokenToUsername.put(token,username);
                             out.println("TOKEN " + token);
                             clientMessage = in.readLine();
                             if (!Objects.equals(clientMessage, "RECEIVED_TOKEN " + token))
@@ -159,9 +162,13 @@ public class ConnectionEstablisher extends Thread{
 
             int skilLevel = server.db.getSkillLevel(username);
 
-            Player player = new Player(this.socket, skilLevel,username);
-            if(!server.playerIsPlaying(player)) //function already replaces player if it was playing
+            Player player = new Player(this.socket, skilLevel, username);
+            if (!server.playerIsPlaying(player) && !server.playerIsWaiting(player)) //function already replaces player if it was playing{
+            {
                 server.players_waiting.add(player);
+                System.out.println(server.players_waiting.size() + " players waiting");
+
+            }
         }
 
     }

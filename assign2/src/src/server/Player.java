@@ -43,6 +43,8 @@ public class Player {
     }
 
 
+    public void setMaxSkillGap(int maxSkillGap){this.maxSkillGap=maxSkillGap;}
+
     public void increaseSkillLevel(int elo) { skillLevel += elo;}
 
     public void decreaseSkillLevel(int elo) { skillLevel += elo;}
@@ -69,5 +71,9 @@ public class Player {
             System.err.println("Error receiving answer from player: " + e.getMessage());
         }
         return null;
+    }
+
+    public boolean isConnected(){
+        return true;
     }
 }
