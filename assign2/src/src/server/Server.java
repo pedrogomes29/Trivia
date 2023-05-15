@@ -113,6 +113,7 @@ public class Server extends Thread
                 }
 
                 synchronized (players_waiting) {
+                    /*
                     if (players_waiting.size() >= NUMBER_OF_PLAYERS_PER_GAME) {
                         List<Player> matchedPlayers = new ArrayList<>();
 
@@ -145,6 +146,8 @@ public class Server extends Thread
                         for (Player player : players_waiting)
                             player.increaseSkillGap();
                     }
+
+                     */
                 }
             }
         }
@@ -152,6 +155,7 @@ public class Server extends Thread
     public static void main( String[] args )
     {
         Server server = new Server( 8080);
+        server.start();
         Scanner scanner = new Scanner(System.in);
         String input;
 

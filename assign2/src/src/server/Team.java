@@ -53,7 +53,7 @@ public class Team {
 
     public void sendQuestion(List<String> question){
         for (Player player : players) {
-            playersThread.execute(() -> player.sendQuestion(question));
+            // playersThread.execute(() -> player.sendQuestion(question));
         }
     }
 }

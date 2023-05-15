@@ -120,8 +120,12 @@ public class Client {
     private ServerResponse authenticate_user(String username,String password)throws Exception{
         out.println("USERNAME "+ username);
         out.println("PASSWORD " + password);
-        String serverResponse;
-        serverResponse = in.readLine();
+        String serverResponse = "ola";
+        //serverResponse = in.readLine();
+        for(int i=0;i<100;i++){
+            serverResponse = in.readLine();
+            System.out.println(serverResponse);
+        }
         if(serverResponse.startsWith("TOKEN")){
             return receive_token(serverResponse);
         }

@@ -159,16 +159,18 @@ public class ConnectionEstablisher extends Thread{
             }
         }
         else {
-
+            /*
             int skilLevel = server.db.getSkillLevel(username);
 
-            Player player = new Player(this.socket, skilLevel, username);
+            player = new Player(this.socket, skilLevel, username);
             if (!server.playerIsPlaying(player) && !server.playerIsWaiting(player)) //function already replaces player if it was playing{
             {
                 server.players_waiting.add(player);
                 System.out.println(server.players_waiting.size() + " players waiting");
 
             }
+
+             */
         }
 
     }

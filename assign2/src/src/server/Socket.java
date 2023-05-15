@@ -5,13 +5,17 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 public class Socket {
-    public long socketId;
+    public Player player;
     public boolean endOfStreamReached = false;
     public SocketChannel socketChannel = null;
-    //public MessageReader messageReader;
-    //public MessageWriter  messageWriter;
+    public MessageReader messageReader;
+    public MessageWriter  messageWriter;
+
     public Socket(SocketChannel socketChannel) {
+
         this.socketChannel = socketChannel;
+        this.messageReader = new MessageReader(this);
+        this.messageWriter = new MessageWriter(this);
     }
     public int read(ByteBuffer byteBuffer) throws IOException {
         int bytesRead = this.socketChannel.read(byteBuffer);
