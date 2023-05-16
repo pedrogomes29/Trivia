@@ -63,6 +63,7 @@ public class Team {
     }
 
     public void receiveAnswer(List<String> question){
+        /*
         long start = System.currentTimeMillis();
         for (Player player : players) {
             playersThread.execute(() -> {
@@ -75,5 +76,6 @@ public class Team {
                 }
             });
         }
+         */
     }
 }

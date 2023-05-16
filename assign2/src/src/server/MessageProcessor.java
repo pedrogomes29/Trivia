@@ -125,7 +125,7 @@ public class MessageProcessor {
         String clientMessage = new String(request.bytes);
         Player player = request.player;
         if(player.isAuthenticated()){
-
+            System.out.println(request);
         }
         else{
             switch(player.authenticationState){
