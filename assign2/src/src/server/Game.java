@@ -35,14 +35,15 @@ public class Game{
         List<Player> teamAPlayers = new ArrayList<>();
         List<Player> teamBPlayers = new ArrayList<>();
         for (int i = 0; i < players.size(); i++) {
+            Player player = players.get(i);
             if (i % 2 == 0) {
-                teamAPlayers.add(players.get(i));
+                teamAPlayers.add(player);
             } else {
-                teamBPlayers.add(players.get(i));
+                teamBPlayers.add(player);
             }
         }
-        Team teamA = new Team(teamAPlayers);
-        Team teamB = new Team(teamBPlayers);
+        Team teamA = new Team(teamAPlayers, 0);
+        Team teamB = new Team(teamBPlayers, 1);
         this.teams.add(teamA);
         this.teams.add(teamB);
     }
@@ -73,11 +74,28 @@ public class Game{
         List<Player> players = new ArrayList<>();
         Game game = new Game(players, 10);
     }
+
     public void run() {
         for (int i = 0; i < numberOfRounds; i++) {
             int random = (int) (Math.random() * questions.size());
             List<String> question = questions.get(random);
             sendQuestionToTeams(question);
+            receiveAnswerFromTeams(question);
+        }
+        gameOver();
+    }
+
+    private void gameOver() {
+        System.out.println("Game over");
+        for (Team team : teams) {
+            System.out.println("Team " + team.getTeamId() + " score: " + team.getScore());
+        }
+        if (teams.get(0).getScore() > teams.get(1).getScore()) {
+            System.out.println("Team 0 wins");
+        } else if (teams.get(0).getScore() < teams.get(1).getScore()) {
+            System.out.println("Team 1 wins");
+        } else {
+            System.out.println("Draw");
         }
     }
 
@@ -92,6 +110,12 @@ public class Game{
     private void sendQuestionToTeams(List<String> question) {
         for (Team team : teams) {
             teamsThread.execute(()-> team.sendQuestion(question));
+        }
+    }
+    private void receiveAnswerFromTeams(List<String> question) {
+        for (Team team : teams) {
+            teamsThread.execute(()-> team.receiveAnswer(question));
+
         }
     }
 }

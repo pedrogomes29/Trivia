@@ -14,6 +14,7 @@ public class Player {
     private int skillLevel;
     private String username;
     private int maxSkillGap;
+    private int team;
 
     public Player(Socket socket, int skillLevel,String username) {
         this.socket = socket;
