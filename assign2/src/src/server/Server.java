@@ -1,19 +1,18 @@
 package server;
 
 import java.io.IOException;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.nio.channels.ServerSocketChannel;
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Server extends Thread
 {
     final int NUMBER_OF_PLAYERS_PER_GAME = 2;
     final int NUMBER_OF_ROUNDS = 5;
-    private ServerSocket serverSocket;
+    private ServerSocketChannel serverSocketChannel;
     private final int port;
 
 
@@ -26,6 +25,9 @@ public class Server extends Thread
 
     public SecureRandom saltGenerator;
 
+    private final ExecutorService connectionThreadPool;
+    private final ExecutorService gameThreadPool;
+
     private boolean running = false;
 
     public Server( int port )
@@ -36,22 +38,22 @@ public class Server extends Thread
         this.db = new PlayerDatabase("database.txt");
         this.tokenToUsername = new HashMap<>();
         this.games = new ArrayList<>();
-    }
-
-    public void startServer()
-    {
-        try
-        {
-            serverSocket = new ServerSocket(port);
-            this.start();
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-        }
+        this.connectionThreadPool = Executors.newFixedThreadPool(50);
+        this.gameThreadPool = Executors.newFixedThreadPool(10);
     }
 
 
+    public boolean playerIsWaiting(Player player){
+        for(int i=0;i<players_waiting.size();i++){
+            Player playersWaiting = players_waiting.get(i);
+            if(Objects.equals(player.getUsername(), playersWaiting.getUsername())) {
+                player.setMaxSkillGap( playersWaiting.getMaxSkillGap());
+                players_waiting.set(i,player);
+                return true;
+            }
+        }
+        return false;
+    }
     public boolean playerIsPlaying(Player player){
         for(Game game:games){
             if(game.gameHasPlayer(player)) {
@@ -69,33 +71,36 @@ public class Server extends Thread
     @Override
     public void run()
     {
-        running = true;
+        try {
+            Matchmaker matchmaker = new Matchmaker();
+            matchmaker.start();
+            Queue socketQueue = new ArrayBlockingQueue(1024); //move 1024 to ServerConfig
 
-        Matchmaker matchmaker = new Matchmaker();
-        matchmaker.start();
+            SocketAccepter socketAccepter = new SocketAccepter(this.port, socketQueue);
+            SocketProcessor socketProcessor = new SocketProcessor(this,socketQueue);
+            Thread accepterThread = new Thread(socketAccepter);
+            Thread processorThread = new Thread(socketProcessor);
 
-        while( running )
-        {
-            try
-            {
-                System.out.println( "Listening for a connection" );
-
-                // Call accept() to receive the next connection
-                Socket socket = serverSocket.accept();
-                System.out.println(players_waiting.size());
-                // Pass the socket to the RequestHandler thread for processing
-                ConnectionEstablisher connectionEstablisher = new ConnectionEstablisher(socket,this);
-                connectionEstablisher.start();
-            }
-            catch (IOException e)
-            {
-                e.printStackTrace();
-            }
+            accepterThread.start();
+            processorThread.start();
+        }
+        catch(IOException e){
+            e.printStackTrace();
         }
     }
 
+
     private class Matchmaker extends Thread {
+
         private final long CHECK_INTERVAL_MS = 5000;
+
+        private boolean playersAreConnected(List<Player> players){
+            for(Player player:players){
+                if(!player.isConnected())
+                    return false;
+            }
+            return true;
+        }
 
         @Override
         public void run() {
@@ -107,6 +112,7 @@ public class Server extends Thread
                 }
 
                 synchronized (players_waiting) {
+                    /*
                     if (players_waiting.size() >= NUMBER_OF_PLAYERS_PER_GAME) {
                         List<Player> matchedPlayers = new ArrayList<>();
 
@@ -129,18 +135,18 @@ public class Server extends Thread
                                 }
                             }
 
-                            if (matchedPlayers.size() == NUMBER_OF_PLAYERS_PER_GAME) {
+                            if (matchedPlayers.size() == NUMBER_OF_PLAYERS_PER_GAME && playersAreConnected(matchedPlayers)) {
                                 players_waiting.removeAll(matchedPlayers);
-
                                 Game game = new Game(matchedPlayers,NUMBER_OF_ROUNDS);
                                 games.add(game);
-                                game.run();
-                                break;
+                                gameThreadPool.execute(game);
                             }
                         }
                         for (Player player : players_waiting)
                             player.increaseSkillGap();
                     }
+
+                     */
                 }
             }
         }
@@ -148,7 +154,7 @@ public class Server extends Thread
     public static void main( String[] args )
     {
         Server server = new Server( 8080);
-        server.startServer();
+        server.start();
         Scanner scanner = new Scanner(System.in);
         String input;
 

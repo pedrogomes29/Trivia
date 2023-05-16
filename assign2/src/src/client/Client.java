@@ -2,9 +2,7 @@ package client;
 import server.Game;
 
 import javax.imageio.IIOException;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
+import java.io.*;
 import java.net.Socket;
 import java.util.Objects;
 import java.util.Scanner;
@@ -122,8 +120,7 @@ public class Client {
     private ServerResponse authenticate_user(String username,String password)throws Exception{
         out.println("USERNAME "+ username);
         out.println("PASSWORD " + password);
-        String serverResponse;
-        serverResponse = in.readLine();
+        String serverResponse = in.readLine();
         if(serverResponse.startsWith("TOKEN")){
             return receive_token(serverResponse);
         }
@@ -159,12 +156,43 @@ public class Client {
         return authenticate_user(username,password);
     }
 
+
+    private void save_token(){
+        try {
+            FileWriter myWriter = new FileWriter("../../../token.txt");
+            myWriter.write(this.token);
+            myWriter.close();
+        } catch (IOException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        }
+    }
+
+    private String get_token(){
+        File f = new File("../../../token.txt");
+        if(f.exists() && !f.isDirectory()) {
+            Scanner myReader = null;
+            try {
+                myReader = new Scanner(f);
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+            if(myReader.hasNextLine())
+                return myReader.nextLine();
+            else
+                return null;
+        }
+        else
+            return null;
+    }
+
     private ServerResponse receive_token(String serverResponse) throws Exception {
         String[] tokenMessage = serverResponse.split(" ");
         if (tokenMessage.length != 2 || !Objects.equals(tokenMessage[0], "TOKEN"))
             return ServerResponse.ERROR;
         token = tokenMessage[1];
-        out.println("RECEIVED_TOKEN " + token);
+        save_token();
+        out.println("TOKEN " + token);
         serverResponse = in.readLine();
         if (Objects.equals(serverResponse, "CONNECTION_ESTABLISHED"))
             return ServerResponse.CONNECTION_ESTABLISHED;
@@ -218,12 +246,14 @@ public class Client {
                 out.println("TOKEN " + token);
                 String serverResponse = in.readLine();
                 if (Objects.equals(serverResponse, "CONNECTION_ESTABLISHED")) {
-                   return;
+                    gameState = GameState.PLAYING;
                 }
                 else if (Objects.equals(serverResponse, "INVALID_TOKEN")) {
                     token=null;
-                    gameState = GameState.ESTABLISHING_CONNECTION;
-                    System.out.println("We regret to inform that you lost the connection to the game and it can't be reconnected");
+                    if(gameState != GameState.ESTABLISHING_CONNECTION) {
+                        gameState = GameState.ESTABLISHING_CONNECTION;
+                        System.out.println("We regret to inform that you lost the connection to the game and it can't be reconnected");
+                    }
                     establishConnection();
                 }
                 else{
@@ -328,12 +358,24 @@ public class Client {
     }
     public static void main( String[] args )
     {
-        Client client = new Client ("localhost", 8080 );
+        if(args.length>0){
+            if(args[0].equals("clear_cookies")){
+                File myObj = new File("../../../token.txt");
+                myObj.delete();
+            }
 
-        while(client.gameState!=GameState.QUIT) {
-            if(client.gameState==GameState.ESTABLISHING_CONNECTION)
+        }
+
+        Client client = new Client ("localhost", 8080 );
+        String token = client.get_token();
+        if(token!=null){
+            client.token = token;
+            client.reestablishConnection();
+        }
+        while (client.gameState != GameState.QUIT) {
+            if (client.gameState == GameState.ESTABLISHING_CONNECTION)
                 client.establishConnection();
-            if(client.gameState==GameState.PLAYING)
+            if (client.gameState == GameState.PLAYING)
                 client.play();
         }
 

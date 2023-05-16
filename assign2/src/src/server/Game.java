@@ -11,7 +11,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class Game{
+public class Game extends Thread{
     private final List<List<String>> questions;
 
     private ExecutorService teamsThread;

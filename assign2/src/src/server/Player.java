@@ -1,34 +1,39 @@
 package server;
 
 import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.nio.channels.IllegalBlockingModeException;
 import java.util.List;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 
 public class Player {
-    private Socket socket;
+    private long socketId;
     private int skillLevel;
     private String username;
     private int maxSkillGap;
     private int team;
 
-    public Player(Socket socket, int skillLevel,String username) {
-        this.socket = socket;
-        this.skillLevel = skillLevel;
+    private boolean isAuthenticated;
+    public AuthenticationState authenticationState;
+
+
+    public Player(long socketId) {
+        this.socketId = socketId;
+        this.authenticationState = AuthenticationState.INITIAL_STATE;
         this.maxSkillGap = 5;
-        this.username = username;
+        this.isAuthenticated = false;
     }
 
+    public boolean isAuthenticated(){
+        return isAuthenticated;
+    }
 
     public String getUsername(){
         return username;
     }
-    public Socket getSocket() {
-        return socket;
+    public long getSocketId() {
+        return socketId;
     }
 
     public int getSkillLevel() {
@@ -44,10 +49,12 @@ public class Player {
     }
 
 
+    public void setMaxSkillGap(int maxSkillGap){this.maxSkillGap=maxSkillGap;}
+
     public void increaseSkillLevel(int elo) { skillLevel += elo;}
 
     public void decreaseSkillLevel(int elo) { skillLevel += elo;}
-
+/*
     public void sendQuestion(List<String> question) {
         try {
             OutputStream outputStream = socket.getOutputStream();
@@ -70,5 +77,18 @@ public class Player {
             System.err.println("Error receiving answer from player: " + e.getMessage());
         }
         return null;
+    }
+*/
+
+    public void setUsername(String username){
+        this.username = username;
+    }
+
+    public void authenticate(){
+        this.isAuthenticated = true;
+    }
+
+    public boolean isConnected(){
+        return true;
     }
 }
