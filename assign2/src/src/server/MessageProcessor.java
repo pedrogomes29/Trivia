@@ -76,7 +76,9 @@ public class MessageProcessor {
                 player.authenticate();
                 if (!server.playerIsPlaying(player) && !server.playerIsWaiting(player)) //function already replaces player if it was playing
                 {
-                    server.players_waiting.add(player);
+                    synchronized (server.players_waiting){
+                        server.players_waiting.add(player);
+                    }
                 }
                 return AuthenticationState.END;
             }

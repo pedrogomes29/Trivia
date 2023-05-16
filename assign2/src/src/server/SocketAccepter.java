@@ -6,13 +6,13 @@ import java.nio.channels.SocketChannel;
 import java.util.Queue;
 
 public class SocketAccepter implements Runnable{
-    private int tcpPort = 0;
-    private ServerSocketChannel serverSocket = null;
+    private Server server;
+    private ServerSocketChannel serverSocket;
 
-    private Queue<Socket> socketQueue = null;
+    private Queue<Socket> socketQueue;
 
-    public SocketAccepter(int tcpPort, Queue socketQueue)  {
-        this.tcpPort     = tcpPort;
+    public SocketAccepter(Server server, Queue socketQueue)  {
+        this.server     = server;
         this.socketQueue = socketQueue;
     }
 
@@ -21,14 +21,14 @@ public class SocketAccepter implements Runnable{
     public void run() {
         try{
             this.serverSocket = ServerSocketChannel.open();
-            this.serverSocket.bind(new InetSocketAddress(tcpPort));
+            this.serverSocket.bind(new InetSocketAddress(server.port));
         } catch(IOException e){
             e.printStackTrace();
             return;
         }
 
 
-        while(true){
+        while(server.running){
             try{
                 SocketChannel socketChannel = this.serverSocket.accept();
 

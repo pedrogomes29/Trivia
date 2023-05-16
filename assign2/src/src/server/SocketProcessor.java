@@ -27,12 +27,13 @@ public class SocketProcessor implements Runnable{
         this.inboundSocketQueue = inboundSocketQueue;
         this.readSelector = Selector.open();
         this.writeSelector = Selector.open();
+        this.server = server;
         this.messageProcessor = new MessageProcessor(server,outboundMessageQueue);
     }
 
     @Override
     public void run() {
-        while(true){
+        while(server.running){
             try{
                 executeCycle();
             } catch(IOException e){
@@ -52,7 +53,7 @@ public class SocketProcessor implements Runnable{
         Socket newSocket = this.inboundSocketQueue.poll();
 
         while(newSocket != null){
-            newSocket.player = new Player(this.nextSocketId++);
+            newSocket.player = new Player(this.nextSocketId++,outboundMessageQueue);
             newSocket.socketChannel.configureBlocking(false);
 
             this.socketMap.put(newSocket.player.getSocketId(), newSocket);

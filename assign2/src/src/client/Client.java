@@ -4,6 +4,8 @@ import server.Game;
 import javax.imageio.IIOException;
 import java.io.*;
 import java.net.Socket;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.Scanner;
 
@@ -356,7 +358,7 @@ public class Client {
             }
         }
     }
-    public static void main( String[] args )
+    public static void main( String[] args ) throws IOException
     {
         if(args.length>0){
             if(args[0].equals("clear_cookies")){

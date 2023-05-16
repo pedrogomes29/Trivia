@@ -13,11 +13,11 @@ public class Server extends Thread
     final int NUMBER_OF_PLAYERS_PER_GAME = 2;
     final int NUMBER_OF_ROUNDS = 5;
     private ServerSocketChannel serverSocketChannel;
-    private final int port;
+    public final int port;
 
 
     public HashMap<String,String> tokenToUsername;
-    public List<Player> players_waiting;
+    public final List<Player> players_waiting;
 
     public List<Game> games;
 
@@ -28,7 +28,7 @@ public class Server extends Thread
     private final ExecutorService connectionThreadPool;
     private final ExecutorService gameThreadPool;
 
-    private boolean running = false;
+    public boolean running = true;
 
     public Server( int port )
     {
@@ -44,15 +44,17 @@ public class Server extends Thread
 
 
     public boolean playerIsWaiting(Player player){
-        for(int i=0;i<players_waiting.size();i++){
-            Player playersWaiting = players_waiting.get(i);
-            if(Objects.equals(player.getUsername(), playersWaiting.getUsername())) {
-                player.setMaxSkillGap( playersWaiting.getMaxSkillGap());
-                players_waiting.set(i,player);
-                return true;
+        synchronized (players_waiting) {
+            for (int i = 0; i < players_waiting.size(); i++) {
+                Player playersWaiting = players_waiting.get(i);
+                if (Objects.equals(player.getUsername(), playersWaiting.getUsername())) {
+                    player.setMaxSkillGap(playersWaiting.getMaxSkillGap());
+                    players_waiting.set(i, player);
+                    return true;
+                }
             }
+            return false;
         }
-        return false;
     }
     public boolean playerIsPlaying(Player player){
         for(Game game:games){
@@ -76,7 +78,7 @@ public class Server extends Thread
             matchmaker.start();
             Queue socketQueue = new ArrayBlockingQueue(1024); //move 1024 to ServerConfig
 
-            SocketAccepter socketAccepter = new SocketAccepter(this.port, socketQueue);
+            SocketAccepter socketAccepter = new SocketAccepter(this, socketQueue);
             SocketProcessor socketProcessor = new SocketProcessor(this,socketQueue);
             Thread accepterThread = new Thread(socketAccepter);
             Thread processorThread = new Thread(socketProcessor);
@@ -92,8 +94,6 @@ public class Server extends Thread
 
     private class Matchmaker extends Thread {
 
-        private final long CHECK_INTERVAL_MS = 5000;
-
         private boolean playersAreConnected(List<Player> players){
             for(Player player:players){
                 if(!player.isConnected())
@@ -106,13 +106,14 @@ public class Server extends Thread
         public void run() {
             while (running) {
                 try {
+                    long CHECK_INTERVAL_MS = 5000;
                     Thread.sleep(CHECK_INTERVAL_MS);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
 
                 synchronized (players_waiting) {
-                    /*
+
                     if (players_waiting.size() >= NUMBER_OF_PLAYERS_PER_GAME) {
                         List<Player> matchedPlayers = new ArrayList<>();
 
@@ -121,7 +122,7 @@ public class Server extends Thread
                             matchedPlayers.add(player);
 
                             for (Player otherPlayer : players_waiting) {
-                                if (player.getSocket().equals(otherPlayer.getSocket())) {
+                                if (player.getSocketId() == otherPlayer.getSocketId()) {
                                     continue;
                                 }
 
@@ -146,7 +147,7 @@ public class Server extends Thread
                             player.increaseSkillGap();
                     }
 
-                     */
+
                 }
             }
         }
