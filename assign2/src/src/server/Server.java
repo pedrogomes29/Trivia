@@ -54,7 +54,6 @@ public class Server extends Thread
         }
         return false;
     }
-
     public boolean playerIsPlaying(Player player){
         for(Game game:games){
             if(game.gameHasPlayer(player)) {
@@ -78,7 +77,7 @@ public class Server extends Thread
             Queue socketQueue = new ArrayBlockingQueue(1024); //move 1024 to ServerConfig
 
             SocketAccepter socketAccepter = new SocketAccepter(this.port, socketQueue);
-            SocketProcessor socketProcessor = new SocketProcessor(socketQueue);
+            SocketProcessor socketProcessor = new SocketProcessor(this,socketQueue);
             Thread accepterThread = new Thread(socketAccepter);
             Thread processorThread = new Thread(socketProcessor);
 

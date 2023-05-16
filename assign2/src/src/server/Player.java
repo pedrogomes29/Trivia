@@ -78,6 +78,15 @@ public class Player {
         return null;
     }
 */
+
+    public void setUsername(String username){
+        this.username = username;
+    }
+
+    public void authenticate(){
+        this.isAuthenticated = true;
+    }
+
     public boolean isConnected(){
         return true;
     }

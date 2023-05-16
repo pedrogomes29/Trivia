@@ -5,5 +5,6 @@ public enum AuthenticationState {
     LOG_IN,
     REGISTER,
     TOKEN,
+    END,
     ERROR
 }

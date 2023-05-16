@@ -12,6 +12,9 @@ public class SocketProcessor implements Runnable{
     private long nextSocketId = 16 * 1024;
     private Selector readSelector;
     private Selector writeSelector;
+
+    private Server server;
+
     private ByteBuffer readByteBuffer  = ByteBuffer.allocate(1024 * 1024);
     private ByteBuffer writeByteBuffer = ByteBuffer.allocate(1024 * 1024);
     private Set<Socket> emptyToNonEmptySockets = new HashSet<>();
@@ -20,11 +23,11 @@ public class SocketProcessor implements Runnable{
     private Map<Long, Socket> socketMap = new HashMap<>();
     private MessageProcessor messageProcessor;
 
-    public SocketProcessor(Queue<Socket> inboundSocketQueue) throws IOException{
+    public SocketProcessor(Server server,Queue<Socket> inboundSocketQueue) throws IOException{
         this.inboundSocketQueue = inboundSocketQueue;
         this.readSelector = Selector.open();
         this.writeSelector = Selector.open();
-        this.messageProcessor = new MessageProcessor(outboundMessageQueue);
+        this.messageProcessor = new MessageProcessor(server,outboundMessageQueue);
     }
 
     @Override

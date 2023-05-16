@@ -120,12 +120,7 @@ public class Client {
     private ServerResponse authenticate_user(String username,String password)throws Exception{
         out.println("USERNAME "+ username);
         out.println("PASSWORD " + password);
-        String serverResponse = "ola";
-        //serverResponse = in.readLine();
-        for(int i=0;i<100;i++){
-            serverResponse = in.readLine();
-            System.out.println(serverResponse);
-        }
+        String serverResponse = in.readLine();
         if(serverResponse.startsWith("TOKEN")){
             return receive_token(serverResponse);
         }
@@ -197,7 +192,7 @@ public class Client {
             return ServerResponse.ERROR;
         token = tokenMessage[1];
         save_token();
-        out.println("RECEIVED_TOKEN " + token);
+        out.println("TOKEN " + token);
         serverResponse = in.readLine();
         if (Objects.equals(serverResponse, "CONNECTION_ESTABLISHED"))
             return ServerResponse.CONNECTION_ESTABLISHED;

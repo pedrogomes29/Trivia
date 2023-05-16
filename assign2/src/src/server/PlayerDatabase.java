@@ -39,26 +39,28 @@ public class PlayerDatabase {
 
     public boolean authenticateUser(String username,String password) {
         try {
-            long low = 0;
-            long high = numPlayers - 1;
+            if(numPlayers>0) {
+                long low = 0;
+                long high = numPlayers - 1;
 
-            while (low <= high) {
-                long mid = (low + high) / 2;
-                file.seek(numPlayersSeekOffset +  mid * MAX_RECORD_SIZE);
-                byte[] buffer = new byte[(int) MAX_RECORD_SIZE];
-                file.readFully(buffer);
-                String record = new String(buffer);
-                String[] fields = record.split(",");
-                String recordUsername = fields[0].trim();
-                int cmp = username.compareTo(recordUsername);
+                while (low <= high) {
+                    long mid = (low + high) / 2;
+                    file.seek(numPlayersSeekOffset + mid * MAX_RECORD_SIZE);
+                    byte[] buffer = new byte[(int) MAX_RECORD_SIZE];
+                    file.readFully(buffer);
+                    String record = new String(buffer);
+                    String[] fields = record.split(",");
+                    String recordUsername = fields[0].trim();
+                    int cmp = username.compareTo(recordUsername);
 
-                if (cmp < 0) {
-                    high = mid - 1;
-                } else if (cmp > 0) {
-                    low = mid + 1;
-                } else {
-                    String recordPassword = fields[1].trim();
-                    return verifyPassword(password,recordPassword);
+                    if (cmp < 0) {
+                        high = mid - 1;
+                    } else if (cmp > 0) {
+                        low = mid + 1;
+                    } else {
+                        String recordPassword = fields[1].trim();
+                        return verifyPassword(password, recordPassword);
+                    }
                 }
             }
         }
@@ -160,32 +162,36 @@ public class PlayerDatabase {
     }
     public boolean addUser(String username,String password){
         try {
-            long low = 0;
-            long high = numPlayers - 1;
-            long mid;
+            long insertPos;
+            if(numPlayers>0) {
+                long low = 0;
+                long high = numPlayers - 1;
+                long mid;
 
 
-
-            while (low <= high) {
-                mid = (low + high) / 2;
-                file.seek(numPlayersSeekOffset + mid * MAX_RECORD_SIZE);
-                byte[] buffer = new byte[(int) MAX_RECORD_SIZE];
-                file.read(buffer);
-                String record = new String(buffer);
-                String existingUsername = record.substring(0, 20).trim();
-                int comparison = existingUsername.compareTo(username);
-                if (comparison < 0) {
-                    low = mid + 1;
-                } else if (comparison > 0) {
-                    high = mid - 1;
-                } else {
-                    return false;
+                while (low <= high) {
+                    mid = (low + high) / 2;
+                    file.seek(numPlayersSeekOffset + mid * MAX_RECORD_SIZE);
+                    byte[] buffer = new byte[(int) MAX_RECORD_SIZE];
+                    file.read(buffer);
+                    String record = new String(buffer);
+                    String existingUsername = record.substring(0, 20).trim();
+                    int comparison = existingUsername.compareTo(username);
+                    if (comparison < 0) {
+                        low = mid + 1;
+                    } else if (comparison > 0) {
+                        high = mid - 1;
+                    } else {
+                        return false;
+                    }
                 }
+
+
+                // Determine the position to insert the new record
+                insertPos = numPlayersSeekOffset + low * MAX_RECORD_SIZE;
             }
-
-
-            // Determine the position to insert the new record
-            long insertPos = numPlayersSeekOffset + low * MAX_RECORD_SIZE;
+            else
+                insertPos = numPlayersSeekOffset;
 
             if (username.length() > MAX_USERNAME_SIZE) {
                 return false;
