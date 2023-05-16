@@ -15,6 +15,7 @@ public class Player {
 
     private Queue<Message> writeQueue;
     private int maxSkillGap;
+    private int team;
 
     private boolean isAuthenticated;
     public AuthenticationState authenticationState;
