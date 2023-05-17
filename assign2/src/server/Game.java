@@ -3,10 +3,7 @@ package server;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -20,7 +17,6 @@ public class Game extends Thread{
 
     private final List<Team> teams;
 
-    private int questionId;
 
     public Game(List<Player> players, int numberOfRounds){
         this.players = players;
@@ -81,11 +77,6 @@ public class Game extends Thread{
         System.out.println("Starting game with " + players.size() + " players");
     }
 
-    public static void main(String[] args) {
-        List<Player> players = new ArrayList<>();
-        Game game = new Game(players, 10);
-    }
-
     public void run() {
         sendQuestionToTeam(teams.get(0));
         sendQuestionToTeam(teams.get(1));
@@ -95,14 +86,23 @@ public class Game extends Thread{
         System.out.println("Game over");
         for (Team team : teams) {
             System.out.println("Team " + team.getTeamId() + " score: " + team.getScore());
+            this.sendMessageToTeam(team, "CONCLUSIONS_Your score: " + team.getScore());
         }
         if (teams.get(0).getScore() > teams.get(1).getScore()) {
             System.out.println("Team 0 wins");
+            this.sendMessageToTeam(teams.get(0), "CONCLUSIONS_You win");
+            this.sendMessageToTeam(teams.get(1), "CONCLUSIONS_You lose");
         } else if (teams.get(0).getScore() < teams.get(1).getScore()) {
             System.out.println("Team 1 wins");
+            this.sendMessageToTeam(teams.get(1), "CONCLUSIONS_You win");
+            this.sendMessageToTeam(teams.get(0), "CONCLUSIONS_You lose");
         } else {
             System.out.println("Draw");
+            this.sendMessageToTeam(teams.get(0), "CONCLUSIONS_Draw");
+            this.sendMessageToTeam(teams.get(1), "CONCLUSIONS_Draw");
         }
+        this.sendMessageToTeam(teams.get(0), "GAME OVER");
+        this.sendMessageToTeam(teams.get(1), "GAME OVER");
     }
 
     public boolean gameHasPlayer(Player player){
@@ -115,18 +115,41 @@ public class Game extends Thread{
 
 
     public void sendQuestionToTeam(Team team){
-        if (questionId < 12) {
-            List<String> question = questions.get(questionId);
+        if (team.getQuestionIndex() < numberOfRounds) {
+            //get random question
+            List<String> question = questions.get(new Random().nextInt(questions.size()));
             List<Player> teamPlayers = team.getPlayers();
             for (Player player: teamPlayers){
                 player.sendQuestion(question);
             }
-            questionId++;
-        } else {
+            team.increaseQuestionIndex();
+            team.setCurrentQuestion(question);
+        }
+        else {
+            sendMessageToTeam(team, "CONCLUSIONS_You have no more questions");
+            team.noMoreQuestions = true;
+        }
+        if (teams.get(0).noMoreQuestions || teams.get(1).noMoreQuestions){
             gameOver();
         }
     }
+    public void sendMessageToTeam(Team team, String message){
+        List<Player> teamPlayers = team.getPlayers();
+        for (Player player: teamPlayers){
+            player.sendMessage(message);
+        }
+    }
     public void receivedAnswer(Player player, String clientMessage){
+        if (player.getTeam().getCurrentQuestion().get(1).equals(clientMessage)){
+            player.increaseSkillLevel(1);
+            player.getTeam().increaseScore(1);
+            this.sendMessageToTeam(player.getTeam(), "ANSWER_Correct answer");
+
+        } else {
+            player.increaseSkillLevel(-1);
+            player.getTeam().increaseScore(-1);
+            this.sendMessageToTeam(player.getTeam(), "ANSWER_Wrong answer, right answer was: " + questions.get(player.getTeam().getQuestionIndex()).get(1));
+        }
         sendQuestionToTeam(player.getTeam());
     }
 }

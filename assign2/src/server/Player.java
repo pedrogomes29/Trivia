@@ -62,11 +62,12 @@ public class Player {
     public void decreaseSkillLevel(int elo) { skillLevel += elo;}
 
     public void sendQuestion(List<String> question) {
-        for (String line : question) {
-            writeQueue.offer(new Message(line,this));
-        }
+            writeQueue.offer(new Message(question.get(0),this));
     }
 
+    public void sendMessage(String message){
+        writeQueue.offer(new Message(message, this));
+    }
     public void setUsername(String username){
         this.username = username;
     }

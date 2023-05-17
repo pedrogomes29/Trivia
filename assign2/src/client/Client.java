@@ -207,21 +207,29 @@ public class Client {
 
     public void play(){
         System.out.println("Waiting for enough players to start a game...");
-        try{
+        try {
             while (true) {
                 String serverText = in.readLine();
-                System.out.println(serverText);
-                if (Objects.equals(serverText, "GAME_OVER")) {
-                    break;
-                }
-                if (serverText != null) {
+                if (serverText.startsWith("ANSWER_") || serverText.startsWith("CONCLUSIONS_")) {
+                    String[] answerMessage = serverText.split("_");
+                    System.out.println(answerMessage[1]);
+                } else {
+                    System.out.println(serverText);
+                    if (serverText.equals("GAME OVER")) {
+                        break;
+                    }
                     System.out.print("Enter your answer:");
-                    Scanner scanner = new Scanner(System.in);
-                    String input = scanner.nextLine();
-                    out.println(input);
+                    BufferedReader user = new BufferedReader(new InputStreamReader(System.in));
+                    while (!user.ready() && !in.ready()) {}
+
+                    if (user.ready()) {
+                        out.println(user.readLine());
+                        break;
+                    }
                 }
             }
         }
+
         catch( Exception e )
         {
             System.out.println("Lost connection..");

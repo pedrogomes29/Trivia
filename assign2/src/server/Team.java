@@ -8,8 +8,13 @@ import java.util.concurrent.Executors;
 public class Team {
     private final int id;
     private final List<Player> players;
+    public boolean noMoreQuestions;
     private int score;
     private int skillLevel;
+
+    private int questionIndex;
+
+    private List<String> currentQuestion;
 
 
     ExecutorService playersThread;
@@ -24,6 +29,8 @@ public class Team {
         this.skillLevel /= players.size();
         this.playersThread = Executors.newFixedThreadPool(players.size());
         this.id = id;
+        this.questionIndex = 0;
+        this.currentQuestion = null;
     }
 
     public boolean teamHasPlayer(Player newPlayer){
@@ -56,4 +63,11 @@ public class Team {
 
     public int getTeamId() {return id;}
 
+    public int getQuestionIndex() {return questionIndex;}
+
+    public void increaseQuestionIndex() {questionIndex++;}
+
+    public List<String> getCurrentQuestion() {return currentQuestion;}
+
+    public void setCurrentQuestion(List<String> currentQuestion) {this.currentQuestion = currentQuestion;}
 }
