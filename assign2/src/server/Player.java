@@ -1,12 +1,10 @@
 package server;
 
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.net.Socket;
 import java.util.List;
-import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.util.Queue;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Player {
     private long socketId;
@@ -22,6 +20,9 @@ public class Player {
 
     private Game game;
 
+    private boolean canBeProcessed;
+    private Lock lock;
+    private Condition processingCondition;
 
     public Player(long socketId,Queue<Message> writeQueue) {
         this.socketId = socketId;
@@ -29,6 +30,34 @@ public class Player {
         this.authenticationState = AuthenticationState.INITIAL_STATE;
         this.maxSkillGap = 5;
         this.isAuthenticated = false;
+        this.lock = new ReentrantLock();
+        this.processingCondition = lock.newCondition();
+        this.canBeProcessed = true;
+    }
+
+
+    public void obtainLock() {
+        lock.lock();
+        try {
+            while (!canBeProcessed) { //while because of spurious wakeups
+                processingCondition.await();
+            }
+            canBeProcessed = false;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void freeLock(){
+        lock.lock();
+        try {
+            canBeProcessed = true;
+            processingCondition.signal(); // Signal that the processing condition is true
+        } finally {
+            lock.unlock();
+        }
     }
 
     public boolean isAuthenticated(){
@@ -56,6 +85,11 @@ public class Player {
 
 
     public void setMaxSkillGap(int maxSkillGap){this.maxSkillGap=maxSkillGap;}
+
+
+    public void setSkillLevel(int elo){
+        skillLevel = elo;
+    }
 
     public void increaseSkillLevel(int elo) { skillLevel += elo;}
 

@@ -113,7 +113,7 @@ public class PlayerDatabase {
             e.printStackTrace();
         }
 
-        return saltString.toString() + ":" + generatedPassword;
+        return saltString + ":" + generatedPassword;
     }
 
 

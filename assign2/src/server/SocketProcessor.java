@@ -6,13 +6,13 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.Selector;
 import java.nio.channels.SelectionKey;
 import java.util.*;
-
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 public class SocketProcessor implements Runnable{
     private Queue<Socket> inboundSocketQueue;
     private long nextSocketId = 16 * 1024;
     private Selector readSelector;
     private Selector writeSelector;
-
     private Server server;
 
     private ByteBuffer readByteBuffer  = ByteBuffer.allocate(1024 * 1024);
@@ -21,14 +21,14 @@ public class SocketProcessor implements Runnable{
     private Set<Socket> nonEmptyToEmptySockets = new HashSet<>();
     private Queue<Message> outboundMessageQueue = new LinkedList<>();
     private Map<Long, Socket> socketMap = new HashMap<>();
-    private MessageProcessor messageProcessor;
+    private ExecutorService processorThreadPool;
 
     public SocketProcessor(Server server,Queue<Socket> inboundSocketQueue) throws IOException{
         this.inboundSocketQueue = inboundSocketQueue;
         this.readSelector = Selector.open();
         this.writeSelector = Selector.open();
         this.server = server;
-        this.messageProcessor = new MessageProcessor(server,outboundMessageQueue);
+        this.processorThreadPool = Executors.newFixedThreadPool(10);
     }
 
     @Override
@@ -101,7 +101,9 @@ public class SocketProcessor implements Runnable{
             List<Message> fullMessages = socket.messageReader.messages;
             if (fullMessages.size() > 0) {
                 for (Message message : fullMessages) {
-                    this.messageProcessor.process(message);  //the message processor will eventually push outgoing messages into a MessageWriter for this socket.
+                    message.player.obtainLock();
+                    MessageProcessor messageProcessor = new MessageProcessor(server, outboundMessageQueue, message);
+                    processorThreadPool.execute(messageProcessor);  //the message processor will eventually push outgoing messages into a MessageWriter for this socket.
                 }
                 fullMessages.clear();
             }

@@ -4,13 +4,15 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.UUID;
 
-public class MessageProcessor {
+public class MessageProcessor extends Thread {
     private Queue<Message> writeQueue;
     private final Server server;
+    private final Message request;
 
-    public MessageProcessor(Server server,Queue<Message> writeQueue){
+    public MessageProcessor(Server server,Queue<Message> writeQueue,Message request){
         this.writeQueue = writeQueue;
         this.server = server;
+        this.request = request;
     }
     private String generateToken(){
         return UUID.randomUUID() + "-" + System.currentTimeMillis();
@@ -74,6 +76,7 @@ public class MessageProcessor {
                 writeQueue.offer(new Message("CONNECTION_ESTABLISHED",player));
                 player.setUsername(username);
                 player.authenticate();
+                player.setSkillLevel(server.db.getSkillLevel(username));
                 if (!server.playerIsPlaying(player) && !server.playerIsWaiting(player)) //function already replaces player if it was playing
                 {
                     synchronized (server.players_waiting){
@@ -121,27 +124,33 @@ public class MessageProcessor {
         }
     }
 
-    public void process(Message request){
-        String clientMessage = new String(request.bytes);
-        Player player = request.player;
-        if(player.isAuthenticated()){
-            player.getGame().receivedAnswer(player,clientMessage);
-        }
-        else{
-            switch(player.authenticationState){
-                case INITIAL_STATE -> {
-                    player.authenticationState = dealWithInitialState(clientMessage,player);
-                }
-                case LOG_IN -> {
-                    player.authenticationState = dealWithLogin(clientMessage,player);
-                }
-                case REGISTER -> {
-                    player.authenticationState = dealWithRegister(clientMessage,player);
-                }
-                case TOKEN -> {
-                    player.authenticationState = dealWithToken(clientMessage,player);
+    @Override
+    public void run()
+    {
+        try {
+            String clientMessage = new String(request.bytes);
+            Player player = request.player;
+            if (player.isAuthenticated()) {
+                player.getGame().receivedAnswer(player, clientMessage);
+            } else {
+                switch (player.authenticationState) {
+                    case INITIAL_STATE -> {
+                        player.authenticationState = dealWithInitialState(clientMessage, player);
+                    }
+                    case LOG_IN -> {
+                        player.authenticationState = dealWithLogin(clientMessage, player);
+                    }
+                    case REGISTER -> {
+                        player.authenticationState = dealWithRegister(clientMessage, player);
+                    }
+                    case TOKEN -> {
+                        player.authenticationState = dealWithToken(clientMessage, player);
+                    }
                 }
             }
+        }
+        finally {
+            request.player.freeLock();
         }
 
     }
