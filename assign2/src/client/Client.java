@@ -1,11 +1,6 @@
 package client;
-import server.Game;
-
-import javax.imageio.IIOException;
 import java.io.*;
 import java.net.Socket;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.Scanner;
 
@@ -18,6 +13,8 @@ public class Client {
     private String token;
 
     private String host;
+
+    public static String src_path = "../../../";
 
     private int port;
     private GameState gameState;
@@ -161,7 +158,7 @@ public class Client {
 
     private void save_token(){
         try {
-            FileWriter myWriter = new FileWriter("../../../token.txt");
+            FileWriter myWriter = new FileWriter(src_path + "token.txt");
             myWriter.write(this.token);
             myWriter.close();
         } catch (IOException e) {
@@ -171,7 +168,7 @@ public class Client {
     }
 
     private String get_token(){
-        File f = new File("../../../token.txt");
+        File f = new File(src_path + "token.txt");
         if(f.exists() && !f.isDirectory()) {
             Scanner myReader = null;
             try {
@@ -370,7 +367,7 @@ public class Client {
     {
         if(args.length>0){
             if(args[0].equals("clear_cookies")){
-                File myObj = new File("../../../token.txt");
+                File myObj = new File(src_path + "token.txt");
                 myObj.delete();
             }
 

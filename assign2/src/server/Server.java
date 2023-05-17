@@ -7,12 +7,15 @@ import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+
 
 public class Server extends Thread
 {
     final int NUMBER_OF_PLAYERS_PER_GAME = 2;
     final int NUMBER_OF_ROUNDS = 5;
-    private ServerSocketChannel serverSocketChannel;
     public final int port;
 
 
@@ -25,10 +28,10 @@ public class Server extends Thread
 
     public SecureRandom saltGenerator;
 
-    private final ExecutorService connectionThreadPool;
     private final ExecutorService gameThreadPool;
 
     public boolean running = true;
+    private final ReadWriteLock playerQueueLock;
 
     public Server( int port )
     {
@@ -38,23 +41,24 @@ public class Server extends Thread
         this.db = new PlayerDatabase("database.txt");
         this.tokenToUsername = new HashMap<>();
         this.games = new ArrayList<>();
-        this.connectionThreadPool = Executors.newFixedThreadPool(50);
         this.gameThreadPool = Executors.newFixedThreadPool(10);
+        this.playerQueueLock = new ReentrantReadWriteLock();
     }
 
 
     public boolean playerIsWaiting(Player player){
-        synchronized (players_waiting) {
-            for (int i = 0; i < players_waiting.size(); i++) {
-                Player playersWaiting = players_waiting.get(i);
-                if (Objects.equals(player.getUsername(), playersWaiting.getUsername())) {
-                    player.setMaxSkillGap(playersWaiting.getMaxSkillGap());
-                    players_waiting.set(i, player);
-                    return true;
-                }
+        playerQueueLock.readLock().lock();
+        for (int i = 0; i < players_waiting.size(); i++) {
+            Player playerWaiting = players_waiting.get(i);
+            if (Objects.equals(player.getUsername(), playerWaiting.getUsername())) {
+                player.setMaxSkillGap(playerWaiting.getMaxSkillGap());
+                players_waiting.set(i, player);
+                playerQueueLock.readLock().unlock();
+                return true;
             }
-            return false;
         }
+        playerQueueLock.readLock().unlock();
+        return false;
     }
     public boolean playerIsPlaying(Player player){
         for(Game game:games){
@@ -104,51 +108,64 @@ public class Server extends Thread
 
         @Override
         public void run() {
+            boolean startedGame=false;
             while (running) {
-                try {
-                    long CHECK_INTERVAL_MS = 5000;
-                    Thread.sleep(CHECK_INTERVAL_MS);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                if(!startedGame) {
+                    try {
+                        long CHECK_INTERVAL_MS = 5000;
+                        Thread.sleep(CHECK_INTERVAL_MS);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                else{
+                    startedGame = false;
                 }
 
-                synchronized (players_waiting) {
+                if (players_waiting.size() >= NUMBER_OF_PLAYERS_PER_GAME) {
+                    List<Player> matchedPlayers = new ArrayList<>();
+                    playerQueueLock.readLock().lock();
+                    for (Player player : players_waiting) {
+                        matchedPlayers.clear();
+                        matchedPlayers.add(player);
 
-                    if (players_waiting.size() >= NUMBER_OF_PLAYERS_PER_GAME) {
-                        List<Player> matchedPlayers = new ArrayList<>();
-
-                        for (Player player : players_waiting) {
-                            matchedPlayers.clear();
-                            matchedPlayers.add(player);
-
-                            for (Player otherPlayer : players_waiting) {
-                                if (player.getSocketId() == otherPlayer.getSocketId()) {
-                                    continue;
-                                }
-
-                                int skillDifference = Math.abs(player.getSkillLevel() - otherPlayer.getSkillLevel());
-                                if (skillDifference <= player.getMaxSkillGap() && skillDifference <= otherPlayer.getMaxSkillGap()) {
-                                    matchedPlayers.add(otherPlayer);
-
-                                    if (matchedPlayers.size() == NUMBER_OF_PLAYERS_PER_GAME) {
-                                        break;
-                                    }
-                                }
+                        for (Player otherPlayer : players_waiting) {
+                            if (player.getSocketId() == otherPlayer.getSocketId()) {
+                                continue;
                             }
 
-                            if (matchedPlayers.size() == NUMBER_OF_PLAYERS_PER_GAME && playersAreConnected(matchedPlayers)) {
-                                players_waiting.removeAll(matchedPlayers);
-                                Game game = new Game(matchedPlayers,NUMBER_OF_ROUNDS);
-                                games.add(game);
-                                gameThreadPool.execute(game);
+                            int skillDifference = Math.abs(player.getSkillLevel() - otherPlayer.getSkillLevel());
+                            if (skillDifference <= player.getMaxSkillGap() && skillDifference <= otherPlayer.getMaxSkillGap()) {
+                                matchedPlayers.add(otherPlayer);
+
+                                if (matchedPlayers.size() == NUMBER_OF_PLAYERS_PER_GAME) {
+                                    break;
+                                }
                             }
                         }
-                        for (Player player : players_waiting)
-                            player.increaseSkillGap();
+
+                        if (matchedPlayers.size() == NUMBER_OF_PLAYERS_PER_GAME && playersAreConnected(matchedPlayers)) {
+                            playerQueueLock.readLock().unlock();
+                            playerQueueLock.writeLock().lock();
+                            players_waiting.removeAll(matchedPlayers);
+                            playerQueueLock.writeLock().unlock();
+                            Game game = new Game(matchedPlayers,NUMBER_OF_ROUNDS);
+                            games.add(game);
+                            gameThreadPool.execute(game);
+                            startedGame = true;
+                            break;
+                        }
                     }
-
-
+                    if(startedGame) //if we started a game, we had to remove the read lock to obtain the write lock, so we need to get a new one
+                        playerQueueLock.readLock().lock();
+                    for (Player player : players_waiting)
+                        player.increaseSkillGap();      //we could obtain a lock for the player,
+                                                        //but we only change skill gap which is only accessed/changed by this thread
+                    playerQueueLock.readLock().unlock();
                 }
+
+
+
             }
         }
     }
