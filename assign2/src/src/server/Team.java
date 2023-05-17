@@ -56,26 +56,4 @@ public class Team {
 
     public int getTeamId() {return id;}
 
-    public void sendQuestion(List<String> question){
-        for (Player player : players) {
-            playersThread.execute(() -> player.sendQuestion(question));
-        }
-    }
-
-    public void receiveAnswer(List<String> question){
-        /*
-        long start = System.currentTimeMillis();
-        for (Player player : players) {
-            playersThread.execute(() -> {
-                String playerAnswer = player.receiveAnswer();
-                if (playerAnswer.equals(question.get(1))) {
-                    this.increaseScore(10);
-                    long end = System.currentTimeMillis();
-                    long newScore =  10 - (end - start);
-                    player.increaseSkillLevel(1);
-                }
-            });
-        }
-         */
-    }
 }

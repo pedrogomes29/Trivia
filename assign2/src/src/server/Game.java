@@ -20,6 +20,8 @@ public class Game extends Thread{
 
     private final List<Team> teams;
 
+    private int questionId;
+
     public Game(List<Player> players, int numberOfRounds){
         this.players = players;
         this.teams = new ArrayList<>();
@@ -36,6 +38,7 @@ public class Game extends Thread{
         List<Player> teamBPlayers = new ArrayList<>();
         for (int i = 0; i < players.size(); i++) {
             Player player = players.get(i);
+            player.setGame(this);
             if (i % 2 == 0) {
                 teamAPlayers.add(player);
             } else {
@@ -44,6 +47,14 @@ public class Game extends Thread{
         }
         Team teamA = new Team(teamAPlayers, 0);
         Team teamB = new Team(teamBPlayers, 1);
+        for (int i = 0; i < players.size(); i++){
+            Player player = players.get(i);
+            if (i % 2 == 0) {
+                player.setTeam(teamA);
+            } else {
+                player.setTeam(teamB);
+            }
+        }
         this.teams.add(teamA);
         this.teams.add(teamB);
     }
@@ -76,13 +87,8 @@ public class Game extends Thread{
     }
 
     public void run() {
-        for (int i = 0; i < numberOfRounds; i++) {
-            int random = (int) (Math.random() * questions.size());
-            List<String> question = questions.get(random);
-            sendQuestionToTeams(question);
-            receiveAnswerFromTeams(question);
-        }
-        gameOver();
+        sendQuestionToTeam(teams.get(0));
+        sendQuestionToTeam(teams.get(1));
     }
 
     private void gameOver() {
@@ -107,15 +113,20 @@ public class Game extends Thread{
         return false;
     }
 
-    private void sendQuestionToTeams(List<String> question) {
-        for (Team team : teams) {
-            teamsThread.execute(()-> team.sendQuestion(question));
+
+    public void sendQuestionToTeam(Team team){
+        if (questionId < 12) {
+            List<String> question = questions.get(questionId);
+            List<Player> teamPlayers = team.getPlayers();
+            for (Player player: teamPlayers){
+                player.sendQuestion(question);
+            }
+            questionId++;
+        } else {
+            gameOver();
         }
     }
-    private void receiveAnswerFromTeams(List<String> question) {
-        for (Team team : teams) {
-            teamsThread.execute(()-> team.receiveAnswer(question));
-
-        }
+    public void receivedAnswer(Player player, String clientMessage){
+        sendQuestionToTeam(player.getTeam());
     }
 }

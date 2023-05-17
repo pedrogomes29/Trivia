@@ -15,10 +15,12 @@ public class Player {
 
     private Queue<Message> writeQueue;
     private int maxSkillGap;
-    private int team;
+    private Team team;
 
     private boolean isAuthenticated;
     public AuthenticationState authenticationState;
+
+    private Game game;
 
 
     public Player(long socketId,Queue<Message> writeQueue) {
@@ -76,4 +78,12 @@ public class Player {
     public boolean isConnected(){
         return true;
     }
+
+    public Game getGame(){ return game;}
+
+    public void setGame(Game game){ this.game = game;}
+
+    public void setTeam(Team team){ this.team = team;}
+
+    public Team getTeam(){ return team;}
 }
