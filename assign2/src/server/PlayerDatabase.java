@@ -19,7 +19,7 @@ public class PlayerDatabase {
     private static final int PASSWORD_SIZE = 97;
 
     private static final int MAX_SCORE_SIZE = 4;
-    private static final long MAX_RECORD_SIZE = MAX_USERNAME_SIZE + 1 + MAX_SCORE_SIZE + 1 + PASSWORD_SIZE + System.getProperty("line.separator").length();
+    private static final long MAX_RECORD_SIZE = MAX_USERNAME_SIZE + 1 + PASSWORD_SIZE + 1 + MAX_SCORE_SIZE + System.getProperty("line.separator").length();
 
 
 
@@ -37,37 +37,76 @@ public class PlayerDatabase {
         }
     }
 
-    public boolean authenticateUser(String username,String password) {
+    public boolean setPlayerSkillLevel(String username, int skillLevel){
         try {
-            if(numPlayers>0) {
-                long low = 0;
-                long high = numPlayers - 1;
+            long userIndex = getUserIndex(username);
+            if(userIndex<0)
+                return false;
+            file.seek(getFileOffset(userIndex) + MAX_USERNAME_SIZE + 1 + PASSWORD_SIZE + 1);
+            String skillLevelStr = String.valueOf(skillLevel);
 
-                while (low <= high) {
-                    long mid = (low + high) / 2;
-                    file.seek(numPlayersSeekOffset + mid * MAX_RECORD_SIZE);
-                    byte[] buffer = new byte[(int) MAX_RECORD_SIZE];
-                    file.readFully(buffer);
-                    String record = new String(buffer);
-                    String[] fields = record.split(",");
-                    String recordUsername = fields[0].trim();
-                    int cmp = username.compareTo(recordUsername);
-
-                    if (cmp < 0) {
-                        high = mid - 1;
-                    } else if (cmp > 0) {
-                        low = mid + 1;
-                    } else {
-                        String recordPassword = fields[1].trim();
-                        return verifyPassword(password, recordPassword);
-                    }
-                }
+            if (skillLevelStr.length() > MAX_SCORE_SIZE) {
+                return false;
+            } else if (skillLevelStr.length() < MAX_SCORE_SIZE) {
+                skillLevelStr = String.format("%" + (MAX_SCORE_SIZE - skillLevelStr.length()) + "s", "") + skillLevelStr;
             }
+
+            file.write(skillLevelStr.getBytes());
+            return true;
         }
         catch(Exception e){
             e.printStackTrace();
         }
+        return false;
+    }
 
+    public long getUserIndex(String username) throws IOException{
+        if(numPlayers<1)
+            return -1;
+        long low = 0;
+        long high = numPlayers - 1;
+
+        while (low <= high) {
+            long mid = (low + high) / 2;
+            file.seek(numPlayersSeekOffset + mid * MAX_RECORD_SIZE);
+            byte[] buffer = new byte[(int) MAX_RECORD_SIZE];
+            file.readFully(buffer);
+            String record = new String(buffer);
+            String[] fields = record.split(",");
+            String recordUsername = fields[0].trim();
+            int cmp = username.compareTo(recordUsername);
+
+            if (cmp < 0) {
+                high = mid - 1;
+            } else if (cmp > 0) {
+                low = mid + 1;
+            } else {
+                return mid;
+            }
+        }
+        return -1;
+    }
+
+    public long getFileOffset(long userIndex){
+        return numPlayersSeekOffset + userIndex * MAX_RECORD_SIZE;
+    }
+
+    public boolean authenticateUser(String username,String password) {
+        try {
+            long userIndex = getUserIndex(username);
+            if(userIndex<0)
+                return false;
+            file.seek(getFileOffset(userIndex));
+            byte[] buffer = new byte[(int) MAX_RECORD_SIZE];
+            file.readFully(buffer);
+            String record = new String(buffer);
+            String[] fields = record.split(",");
+            String recordPassword = fields[1].trim();
+            return verifyPassword(password, recordPassword);
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
         return false;
     }
 
@@ -160,6 +199,7 @@ public class PlayerDatabase {
         }
         return false;
     }
+
     public boolean addUser(String username,String password){
         try {
             long insertPos;
@@ -225,34 +265,23 @@ public class PlayerDatabase {
 
     public int getSkillLevel(String username) {
         try {
-            long low = 0;
-            long high = numPlayers - 1;
-
-            while (low <= high) {
-                long mid = (low + high) / 2;
-                file.seek(numPlayersSeekOffset +  mid * MAX_RECORD_SIZE);
-                byte[] buffer = new byte[(int) MAX_RECORD_SIZE];
-                file.readFully(buffer);
-                String record = new String(buffer);
-                String[] fields = record.split(",");
-                String recordUsername = fields[0].trim();
-                int cmp = username.compareTo(recordUsername);
-
-                if (cmp < 0) {
-                    high = mid - 1;
-                } else if (cmp > 0) {
-                    low = mid + 1;
-                } else {
-                    String skillLevel = fields[2].trim();
-                    return Integer.parseInt(skillLevel);
-                }
-            }
+            long userIndex = getUserIndex(username);
+            if(userIndex<0)
+                return -1;
+            file.seek(getFileOffset(userIndex));
+            byte[] buffer = new byte[(int) MAX_RECORD_SIZE];
+            file.readFully(buffer);
+            String record = new String(buffer);
+            String[] fields = record.split(",");
+            String skillLevel = fields[2].trim();
+            return Integer.parseInt(skillLevel);
         }
         catch(Exception e){
             e.printStackTrace();
         }
         return -1;
     }
+
     public void close() throws IOException {
         file.close();
     }
