@@ -14,7 +14,7 @@ public class Client {
 
     private String host;
 
-    public static String src_path = "../../../";
+    public static String src_path = "./";
 
     private int port;
     private GameState gameState;
@@ -28,9 +28,7 @@ public class Client {
     enum GameState{
         ESTABLISHING_CONNECTION,
         PLAYING,
-
-        CONNECTION_ERROR,
-
+        GAME_OVER,
         QUIT
     }
 
@@ -170,7 +168,7 @@ public class Client {
     private String get_token(){
         File f = new File(src_path + "token.txt");
         if(f.exists() && !f.isDirectory()) {
-            Scanner myReader = null;
+            Scanner myReader;
             try {
                 myReader = new Scanner(f);
             } catch (FileNotFoundException e) {
@@ -213,6 +211,7 @@ public class Client {
                 } else {
                     System.out.println(serverText);
                     if (serverText.equals("GAME OVER")) {
+                        this.gameState = GameState.GAME_OVER;
                         break;
                     }
                     System.out.print("Enter your answer:");
@@ -285,34 +284,20 @@ public class Client {
                     password = userCredentials[1];
                     ServerResponse serverResponse = this.log_in(username, password);
                     switch (serverResponse) {
-                        case CLIENT_ERROR -> {
-                            System.out.println("Unexpected client error");
-                            break;
-                        }
-                        case SERVER_ERROR -> {
-                            System.out.println("Unexpected server error");
-                            break;
-                        }
-                        case ERROR -> {
-                            System.out.println("Something unexpected happened");
-                            break;
-                        }
-                        case INVALID_LOGIN -> {
-                            System.out.println("Invalid username/password");
-                            break;
-                        }
+                        case CLIENT_ERROR -> System.out.println("Unexpected client error");
+                        case SERVER_ERROR -> System.out.println("Unexpected server error");
+                        case ERROR -> System.out.println("Something unexpected happened");
+                        case INVALID_LOGIN -> System.out.println("Invalid username/password");
                         case WRONG_TOKEN -> {
                             do {
                                 serverResponse = receive_token(in.readLine());
                             } while (serverResponse != ServerResponse.CONNECTION_ESTABLISHED);
                             gameState = GameState.PLAYING;
                             System.out.println("Logged in succesfully");
-                            break;
                         }
                         case CONNECTION_ESTABLISHED -> {
                             gameState = GameState.PLAYING;
                             System.out.println("Logged in succesfully");
-                            break;
                         }
                     }
                 } else if (option == AuthenticationOption.REGISTER) {
@@ -322,34 +307,20 @@ public class Client {
                     password = userCredentials[1];
                     ServerResponse serverResponse = this.register_user(username, password);
                     switch (serverResponse) {
-                        case CLIENT_ERROR -> {
-                            System.out.println("Unexpected client error");
-                            break;
-                        }
-                        case SERVER_ERROR -> {
-                            System.out.println("Unexpected server error");
-                            break;
-                        }
-                        case ERROR -> {
-                            System.out.println("Something unexpected happened");
-                            break;
-                        }
-                        case INVALID_REGISTER -> {
-                            System.out.println("Username already taken");
-                            break;
-                        }
+                        case CLIENT_ERROR -> System.out.println("Unexpected client error");
+                        case SERVER_ERROR -> System.out.println("Unexpected server error");
+                        case ERROR -> System.out.println("Something unexpected happened");
+                        case INVALID_REGISTER -> System.out.println("Username already taken");
                         case WRONG_TOKEN -> {
                             do {
                                 serverResponse = receive_token(in.readLine());
                             } while (serverResponse != ServerResponse.CONNECTION_ESTABLISHED);
                             gameState = GameState.PLAYING;
                             System.out.println("Registered succesfully");
-                            break;
                         }
                         case CONNECTION_ESTABLISHED -> {
                             gameState = GameState.PLAYING;
                             System.out.println("Registered succesfully");
-                            break;
                         }
                     }
                 } else if (option == AuthenticationOption.EXIT) {
@@ -362,8 +333,7 @@ public class Client {
             }
         }
     }
-    public static void main( String[] args ) throws IOException
-    {
+    public static void main( String[] args ) {
         if(args.length>0){
             if(args[0].equals("clear_cookies")){
                 File myObj = new File(src_path + "token.txt");
@@ -378,13 +348,30 @@ public class Client {
             client.token = token;
             client.reestablishConnection();
         }
-        while (client.gameState != GameState.QUIT) {
-            if (client.gameState == GameState.ESTABLISHING_CONNECTION)
-                client.establishConnection();
-            if (client.gameState == GameState.PLAYING)
-                client.play();
+        while (client.gameState!= null && client.gameState != GameState.QUIT) {
+            switch (client.gameState) {
+                case ESTABLISHING_CONNECTION -> client.establishConnection();
+                case PLAYING -> client.play();
+                case GAME_OVER -> client.dealWithGameOver();
+                default -> System.out.println("Something unexpected happened");
+            }
         }
-
         client.closeConnection();
+    }
+
+    private void dealWithGameOver() {
+        Scanner scanner = new Scanner(System.in);
+        String input;
+        do {
+            System.out.println("Game Over");
+            System.out.println("1: Play again");
+            System.out.println("2: Exit");
+            input = scanner.nextLine();
+        } while (!input.equals("1") && !input.equals("2"));
+        if (input.equals("1")) {
+            out.println("PLAY_AGAIN");
+        } else {
+            this.gameState = GameState.QUIT;
+        }
     }
 }

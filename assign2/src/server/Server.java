@@ -149,9 +149,9 @@ public class Server extends Thread
                             playerQueueLock.writeLock().lock();
                             players_waiting.removeAll(matchedPlayers);
                             playerQueueLock.writeLock().unlock();
-                            Game game = new Game(matchedPlayers,NUMBER_OF_ROUNDS);
+                            Game game = new Game(matchedPlayers,NUMBER_OF_ROUNDS, db);
                             games.add(game);
-                            gameThreadPool.execute(game);
+                            game.start();
                             startedGame = true;
                             break;
                         }

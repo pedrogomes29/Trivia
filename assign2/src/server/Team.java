@@ -70,4 +70,12 @@ public class Team {
     public List<String> getCurrentQuestion() {return currentQuestion;}
 
     public void setCurrentQuestion(List<String> currentQuestion) {this.currentQuestion = currentQuestion;}
+
+    public String teamMembersToString(){
+        StringBuilder teamMembers = new StringBuilder();
+        for (Player player: players){
+            teamMembers.append(player.getUsername()).append("-");
+        }
+        return teamMembers.substring(0, teamMembers.length()-1);
+    }
 }

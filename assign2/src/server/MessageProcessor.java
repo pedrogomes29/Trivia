@@ -131,7 +131,15 @@ public class MessageProcessor extends Thread {
             String clientMessage = new String(request.bytes);
             Player player = request.player;
             if (player.isAuthenticated()) {
-                player.getGame().receivedAnswer(player, clientMessage);
+                if (clientMessage.equals("PLAY_AGAIN")){
+                    synchronized (server.players_waiting){
+                        server.players_waiting.add(player);
+                    }
+                }
+                else
+                {
+                    player.getGame().receivedAnswer(player, clientMessage);
+                }
             } else {
                 switch (player.authenticationState) {
                     case INITIAL_STATE -> {

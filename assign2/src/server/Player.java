@@ -7,11 +7,11 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Player {
-    private long socketId;
+    private final long socketId;
     private int skillLevel;
     private String username;
 
-    private Queue<Message> writeQueue;
+    private final Queue<Message> writeQueue;
     private int maxSkillGap;
     private Team team;
 
@@ -21,8 +21,8 @@ public class Player {
     private Game game;
 
     private boolean canBeProcessed;
-    private Lock lock;
-    private Condition processingCondition;
+    private final Lock lock;
+    private final Condition processingCondition;
 
     public Player(long socketId,Queue<Message> writeQueue) {
         this.socketId = socketId;
@@ -39,7 +39,7 @@ public class Player {
     public void obtainLock() {
         lock.lock();
         try {
-            while (!canBeProcessed) { //while because of spurious wakeups
+            while (!canBeProcessed) { //while because of spurious wake-ups
                 processingCondition.await();
             }
             canBeProcessed = false;
@@ -92,8 +92,6 @@ public class Player {
     }
 
     public void increaseSkillLevel(int elo) { skillLevel += elo;}
-
-    public void decreaseSkillLevel(int elo) { skillLevel += elo;}
 
     public void sendQuestion(List<String> question) {
             writeQueue.offer(new Message(question.get(0),this));
