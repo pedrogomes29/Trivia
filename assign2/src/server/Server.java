@@ -205,8 +205,26 @@ public class Server extends Thread
         String input;
 
         do {
+            System.out.println("Server is running");
+            System.out.println("Type 'queue' to see the players in queue");
             System.out.println("Type 'close' to exit");
             input = scanner.nextLine();
+            if(input.equals("queue")){
+                server.playerQueueLock.readLock().lock();
+                try {
+                    if(server.players_waiting.size()==0){
+                        System.out.println("No players in queue");
+                    }
+                    else {
+                        for (Player player : server.players_waiting) {
+                            System.out.println(player.getUsername() + " Skill Level: " + player.getSkillLevel() + " Current Skill Gap: " + player.getMaxSkillGap());
+                        }
+                    }
+                }
+                finally {
+                    server.playerQueueLock.readLock().unlock();
+                }
+            }
         } while (!input.equals("close"));
 
         System.out.println("Server closed");
