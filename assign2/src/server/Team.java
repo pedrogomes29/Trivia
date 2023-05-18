@@ -2,8 +2,6 @@ package server;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class Team {
     private final int id;
@@ -11,13 +9,9 @@ public class Team {
     public boolean noMoreQuestions;
     private int score;
     private int skillLevel;
-
     private int questionIndex;
 
     private List<String> currentQuestion;
-
-
-    ExecutorService playersThread;
 
     public Team(List<Player> players, int id) {
         this.players = players;
@@ -27,7 +21,6 @@ public class Team {
             this.skillLevel += player.getSkillLevel();
         }
         this.skillLevel /= players.size();
-        this.playersThread = Executors.newFixedThreadPool(players.size());
         this.id = id;
         this.questionIndex = 0;
         this.currentQuestion = null;

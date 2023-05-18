@@ -14,7 +14,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Server extends Thread
 {
-    final int NUMBER_OF_PLAYERS_PER_GAME = 4;
+    final int NUMBER_OF_PLAYERS_PER_GAME = 2;
     final int NUMBER_OF_ROUNDS = 5;
     public final int port;
 
@@ -28,8 +28,6 @@ public class Server extends Thread
 
     public SecureRandom saltGenerator;
 
-    private final ExecutorService gameThreadPool;
-
     public boolean running = true;
     public final ReadWriteLock playerQueueLock;
 
@@ -41,7 +39,6 @@ public class Server extends Thread
         this.db = new PlayerDatabase("database.txt");
         this.tokenToUsername = new HashMap<>();
         this.games = new ArrayList<>();
-        this.gameThreadPool = Executors.newFixedThreadPool(10);
         this.playerQueueLock = new ReentrantReadWriteLock();
     }
 
@@ -210,6 +207,9 @@ public class Server extends Thread
                     else {
                         for (Player player : server.players_waiting) {
                             System.out.println(player.getUsername() + " Skill Level: " + player.getSkillLevel() + " Current Skill Gap: " + player.getMaxSkillGap());
+                            if(player.timeSinceDisconnect()>=0){
+                                System.out.println("Has been disconnected for" + (System.currentTimeMillis() - player.timeSinceDisconnect()));
+                            }
                         }
                     }
                 }

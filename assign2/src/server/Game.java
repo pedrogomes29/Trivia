@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Game {
     private final List<List<String>> questions;
@@ -14,13 +16,14 @@ public class Game {
     private final List<Team> teams;
 
     private final PlayerDatabase db;
-
+    private final Lock answerLock;
 
     public Game(List<Player> players, int numberOfRounds, PlayerDatabase db){
         this.players = players;
         this.teams = new ArrayList<>();
         this.numberOfRounds = numberOfRounds;
         this.db = db;
+        this.answerLock = new ReentrantLock();
         this.separatePlayersIntoTeams();
         this.questions = new ArrayList<>();
         this.readQuestionsFromFile();
@@ -141,9 +144,8 @@ public class Game {
             List<String> question = questions.get(new Random().nextInt(questions.size()));
             List<Player> teamPlayers = team.getPlayers();
             for (Player player: teamPlayers){
-                player.sendQuestion(question);
+                player.sendQuestion(team.getQuestionIndex(),question);
             }
-            team.increaseQuestionIndex();
             team.setCurrentQuestion(question);
         }
         else {
@@ -160,19 +162,35 @@ public class Game {
             player.sendMessage(message);
         }
     }
-    public void receivedAnswer(Player player, String clientMessage){
-        if (player.getTeam().getCurrentQuestion().get(1).equals(clientMessage)){
-            player.increaseSkillLevel(1);
-            player.getTeam().increaseScore(1);
-            this.sendMessageToTeam(player.getTeam(), "ANSWER_Correct answer, " + clientMessage+ ", answered by: " + player.getUsername()
-            + ", Team Score: " + player.getTeam().getScore() + ", Player's Skill Level: " + player.getSkillLevel());
 
-        } else {
-            player.increaseSkillLevel(-1);
-            player.getTeam().increaseScore(-1);
-            this.sendMessageToTeam(player.getTeam(), "ANSWER_Wrong answer, " +clientMessage + ", answered by: " + player.getUsername() + ", right answer was: " + questions.get(player.getTeam().getQuestionIndex()).get(1)
-                    + ", Team Score: " + player.getTeam().getScore() + ", Player's Skill Level: " + player.getSkillLevel());
+    public void receivedAnswer(Player player, int round, String clientMessage){
+        answerLock.lock();
+        boolean firstAnswer;
+        try {
+            if(player.getTeam().getQuestionIndex()==round){
+                player.getTeam().increaseQuestionIndex();
+                firstAnswer = true;
+            }
+            else
+                firstAnswer = false;
         }
-        sendQuestionToTeam(player.getTeam());
+        finally{
+            answerLock.unlock();
+        }
+        if(firstAnswer) {
+            if (player.getTeam().getCurrentQuestion().get(1).equals(clientMessage)) {
+                player.increaseSkillLevel(1);
+                player.getTeam().increaseScore(1);
+                this.sendMessageToTeam(player.getTeam(), "ANSWER_Correct answer, " + clientMessage + ", answered by: " + player.getUsername()
+                        + ", Team Score: " + player.getTeam().getScore() + ", Player's Skill Level: " + player.getSkillLevel());
+
+            } else {
+                player.increaseSkillLevel(-1);
+                player.getTeam().increaseScore(-1);
+                this.sendMessageToTeam(player.getTeam(), "ANSWER_Wrong answer, " + clientMessage + ", answered by: " + player.getUsername() + ", right answer was: " + questions.get(player.getTeam().getQuestionIndex()).get(1)
+                        + ", Team Score: " + player.getTeam().getScore() + ", Player's Skill Level: " + player.getSkillLevel());
+            }
+            sendQuestionToTeam(player.getTeam());
+        }
     }
 }

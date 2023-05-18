@@ -142,7 +142,12 @@ public class MessageProcessor extends Thread {
                 }
                 else
                 {
-                    player.getGame().receivedAnswer(player, clientMessage);
+                    String[] answerMessage = clientMessage.split("_");
+                    if(!Objects.equals(answerMessage[0], "ANSWER"))
+                        player.sendMessage("INVALID_RESPONSE");
+                    int round = Integer.parseInt(answerMessage[1]);
+                    String answer = answerMessage[2];
+                    player.getGame().receivedAnswer(player,round, answer);
                 }
             } else {
                 switch (player.authenticationState) {

@@ -57,7 +57,7 @@ public class Player {
         lock.lock();
         try {
             canBeProcessed = true;
-            processingCondition.signal(); // Signal that the processing condition is true
+            processingCondition.signal();
         } finally {
             lock.unlock();
         }
@@ -96,8 +96,8 @@ public class Player {
 
     public void increaseSkillLevel(int elo) { skillLevel += elo;}
 
-    public void sendQuestion(List<String> question) {
-            writeQueue.offer(new Message(question.get(0),this));
+    public void sendQuestion(int round,List<String> question) {
+            writeQueue.offer(new Message("QUESTION_" + round + "_" +question.get(0),this));
     }
 
     public void sendMessage(String message){

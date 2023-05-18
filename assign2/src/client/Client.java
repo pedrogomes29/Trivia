@@ -65,7 +65,6 @@ public class Client {
     public void closeConnection(){
         try
         {
-            out.println("EXIT");
             in.close();
             out.close();
             socket.close();
@@ -182,6 +181,16 @@ public class Client {
         else
             return null;
     }
+    private ServerResponse send_token()throws IOException{
+        out.println("TOKEN " + token);
+        String serverResponse = in.readLine();
+        if (Objects.equals(serverResponse, "CONNECTION_ESTABLISHED"))
+            return ServerResponse.CONNECTION_ESTABLISHED;
+        else if (Objects.equals(serverResponse, "WRONG_TOKEN"))
+            return ServerResponse.WRONG_TOKEN;
+        else
+            return ServerResponse.ERROR;
+    }
 
     private ServerResponse receive_token(String serverResponse) throws Exception {
         String[] tokenMessage = serverResponse.split(" ");
@@ -189,14 +198,7 @@ public class Client {
             return ServerResponse.ERROR;
         token = tokenMessage[1];
         save_token();
-        out.println("TOKEN " + token);
-        serverResponse = in.readLine();
-        if (Objects.equals(serverResponse, "CONNECTION_ESTABLISHED"))
-            return ServerResponse.CONNECTION_ESTABLISHED;
-        else if (Objects.equals(serverResponse, "WRONG_TOKEN"))
-            return ServerResponse.WRONG_TOKEN;
-        else
-            return ServerResponse.ERROR;
+        return send_token();
     }
 
 
@@ -209,17 +211,20 @@ public class Client {
                     String[] answerMessage = serverText.split("_");
                     System.out.println(answerMessage[1]);
                 } else {
-                    System.out.println(serverText);
                     if (serverText.equals("GAME OVER")) {
                         this.gameState = GameState.GAME_OVER;
                         break;
                     }
+                    String[] questionMessage = serverText.split("_");
+                    int round = Integer.parseInt(questionMessage[1]);
+                    String question = questionMessage[2];
+                    System.out.println(question);
                     System.out.print("Enter your answer:");
                     BufferedReader user = new BufferedReader(new InputStreamReader(System.in));
                     while (!user.ready() && !in.ready()) {}
 
                     if (user.ready()) {
-                        out.println(user.readLine());
+                        out.println("ANSWER_" + round + "_" + user.readLine());
                     }
                 }
             }
@@ -234,43 +239,47 @@ public class Client {
                 System.out.println("Restablished connection");
                 //voltar a jogar
             }
+
         }
     }
 
-    public void reestablishConnection(){
-        try {
-            // Connect to the server
-            socket = new Socket(host, port);
-            out = new PrintStream(socket.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            if(token==null) {
-                gameState = GameState.ESTABLISHING_CONNECTION;
-                establishConnection();
-            }
-            else {
-                out.println("TOKEN " + token);
-                String serverResponse = in.readLine();
-                if (Objects.equals(serverResponse, "CONNECTION_ESTABLISHED")) {
-                    gameState = GameState.PLAYING;
-                }
-                else if (Objects.equals(serverResponse, "INVALID_TOKEN")) {
-                    token=null;
-                    if(gameState != GameState.ESTABLISHING_CONNECTION) {
-                        gameState = GameState.ESTABLISHING_CONNECTION;
-                        System.out.println("We regret to inform that you lost the connection to the game and it can't be reconnected");
-                    }
-                    establishConnection();
-                }
-                else{
-                    reestablishConnection();
-                }
-            }
-        }
-        catch(Exception e){
-            e.printStackTrace();
-            reestablishConnection();
-        }
 
+    public void reestablishConnection(){
+        int num_attempts = 1;
+        while(num_attempts<8) {
+            try {
+                if(num_attempts>1)
+                    Thread.sleep(1000*(long) Math.pow(2,num_attempts));
+
+                // Connect to the server
+                socket = new Socket(host, port);
+                out = new PrintStream(socket.getOutputStream(), true);
+                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                if (token == null) {
+                    gameState = GameState.ESTABLISHING_CONNECTION;
+                    establishConnection();
+                } else {
+                    out.println("TOKEN " + token);
+                    String serverResponse = in.readLine();
+                    if (Objects.equals(serverResponse, "CONNECTION_ESTABLISHED")) {
+                        gameState = GameState.PLAYING;
+                    } else if (Objects.equals(serverResponse, "INVALID_TOKEN")) {
+                        token = null;
+                        if (gameState != GameState.ESTABLISHING_CONNECTION) {
+                            gameState = GameState.ESTABLISHING_CONNECTION;
+                            System.out.println("We regret to inform that you lost the connection to the game and it can't be reconnected");
+                        }
+                        establishConnection();
+                    } else {
+                        num_attempts++;
+                    }
+                }
+            } catch (Exception e) {
+                num_attempts++;
+                System.out.println("Couldn't reestablish connection, trying again in " + (long) Math.pow(2,num_attempts) + "seconds");
+            }
+        }
+        System.out.println("Maximum number of retries reached, quitting");
     }
 
     public void establishConnection(){
@@ -346,9 +355,19 @@ public class Client {
         String token = client.get_token();
         if(token!=null){
             client.token = token;
-            client.reestablishConnection();
+            try {
+                if (Objects.requireNonNull(client.send_token()) == ServerResponse.CONNECTION_ESTABLISHED) {
+                    client.gameState = GameState.PLAYING;
+                } else {
+                    client.gameState = GameState.ESTABLISHING_CONNECTION;
+                    client.token = null;
+                }
+            } catch (Exception e) {
+                client.gameState = GameState.ESTABLISHING_CONNECTION;
+                client.token = null;
+            }
         }
-        while (client.gameState!= null && client.gameState != GameState.QUIT) {
+        while (client.gameState != GameState.QUIT) {
             switch (client.gameState) {
                 case ESTABLISHING_CONNECTION -> client.establishConnection();
                 case PLAYING -> client.play();
@@ -370,6 +389,7 @@ public class Client {
         } while (!input.equals("1") && !input.equals("2"));
         if (input.equals("1")) {
             out.println("PLAY_AGAIN");
+            this.gameState = GameState.PLAYING;
         } else {
             this.gameState = GameState.QUIT;
         }
