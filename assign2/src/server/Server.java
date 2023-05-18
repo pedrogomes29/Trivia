@@ -14,7 +14,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Server extends Thread
 {
-    final int NUMBER_OF_PLAYERS_PER_GAME = 2;
+    final int NUMBER_OF_PLAYERS_PER_GAME = 4;
     final int NUMBER_OF_ROUNDS = 5;
     public final int port;
 

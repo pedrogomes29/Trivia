@@ -129,7 +129,7 @@ public class Game extends Thread{
             sendMessageToTeam(team, "CONCLUSIONS_You have no more questions");
             team.noMoreQuestions = true;
         }
-        if (teams.get(0).noMoreQuestions || teams.get(1).noMoreQuestions){
+        if (teams.get(0).noMoreQuestions && teams.get(1).noMoreQuestions){
             gameOver();
         }
     }
@@ -143,12 +143,12 @@ public class Game extends Thread{
         if (player.getTeam().getCurrentQuestion().get(1).equals(clientMessage)){
             player.increaseSkillLevel(1);
             player.getTeam().increaseScore(1);
-            this.sendMessageToTeam(player.getTeam(), "ANSWER_Correct answer");
+            this.sendMessageToTeam(player.getTeam(), "ANSWER_Correct answer, " + clientMessage+ ", answered by: " + player.getUsername());
 
         } else {
             player.increaseSkillLevel(-1);
             player.getTeam().increaseScore(-1);
-            this.sendMessageToTeam(player.getTeam(), "ANSWER_Wrong answer, right answer was: " + questions.get(player.getTeam().getQuestionIndex()).get(1));
+            this.sendMessageToTeam(player.getTeam(), "ANSWER_Wrong answer, " +clientMessage + ", answered by: " + player.getUsername() + ", right answer was: " + questions.get(player.getTeam().getQuestionIndex()).get(1));
         }
         sendQuestionToTeam(player.getTeam());
     }
