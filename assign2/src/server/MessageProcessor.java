@@ -5,12 +5,10 @@ import java.util.Queue;
 import java.util.UUID;
 
 public class MessageProcessor extends Thread {
-    private Queue<Message> writeQueue;
     private final Server server;
     private final Message request;
 
-    public MessageProcessor(Server server,Queue<Message> writeQueue,Message request){
-        this.writeQueue = writeQueue;
+    public MessageProcessor(Server server,Message request){
         this.server = server;
         this.request = request;
     }
@@ -23,12 +21,14 @@ public class MessageProcessor extends Thread {
         if(player.getUsername()!=null && messageList.length==2 && Objects.equals(messageList[0], "PASSWORD")){
             if (server.db.authenticateUser(player.getUsername(), messageList[1])) {
                 String token = generateToken();
-                server.tokenToUsername.put(token,player.getUsername());
-                writeQueue.offer(new Message("TOKEN " + token,player));
+                synchronized (server.tokenToUsername) {
+                    server.tokenToUsername.put(token, player.getUsername());
+                }
+                player.sendMessage("TOKEN " + token);
                 return AuthenticationState.TOKEN;
             }
             else {
-                writeQueue.offer(new Message("INVALID_LOG_IN",player));
+                player.sendMessage("INVALID_LOG_IN");
                 return AuthenticationState.INITIAL_STATE;
             }
         }
@@ -37,7 +37,7 @@ public class MessageProcessor extends Thread {
             return AuthenticationState.LOG_IN;
         }
         else {
-            writeQueue.offer(new Message("INVALID_RESPONSE",player));
+            player.sendMessage("INVALID_RESPONSE");
             return AuthenticationState.INITIAL_STATE;
         }
     }
@@ -46,12 +46,14 @@ public class MessageProcessor extends Thread {
         if(player.getUsername()!=null && messageList.length==2 && Objects.equals(messageList[0], "PASSWORD")){
             if (server.db.addUser(player.getUsername(), messageList[1])) {
                 String token = generateToken();
-                server.tokenToUsername.put(token,player.getUsername());
-                writeQueue.offer(new Message("TOKEN " + token,player));
+                synchronized (server.tokenToUsername) {
+                    server.tokenToUsername.put(token, player.getUsername());
+                }
+                player.sendMessage("TOKEN " + token);
                 return AuthenticationState.TOKEN;
             }
             else {
-                writeQueue.offer(new Message("INVALID_REGISTER",player));
+                player.sendMessage("INVALID_REGISTER");
                 return AuthenticationState.INITIAL_STATE;
             }
         }
@@ -60,7 +62,7 @@ public class MessageProcessor extends Thread {
             return AuthenticationState.REGISTER;
         }
         else {
-            writeQueue.offer(new Message("INVALID_RESPONSE",player));
+            player.sendMessage("INVALID_RESPONSE");
             return AuthenticationState.INITIAL_STATE;
         }
     }
@@ -70,15 +72,18 @@ public class MessageProcessor extends Thread {
         String[] messageList = clientMessage.split(" ");
         if(messageList.length==2 && Objects.equals(messageList[0], "TOKEN")){
             String token = messageList[1];
-            String username = server.tokenToUsername.get(token);
+            String username;
+            synchronized (server.tokenToUsername){
+                username = server.tokenToUsername.get(token);
+            }
 
             if(username!=null){
-                writeQueue.offer(new Message("CONNECTION_ESTABLISHED",player));
+                player.sendMessage("CONNECTION_ESTABLISHED");
                 player.setUsername(username);
                 player.authenticate();
-                player.setSkillLevel(server.db.getSkillLevel(username));
                 if (!server.playerIsPlaying(player) && !server.playerIsWaiting(player)) //function already replaces player if it was playing
                 {
+                    player.setSkillLevel(server.db.getSkillLevel(username));
                     server.playerQueueLock.writeLock().lock();
                     try{
                         server.players_waiting.add(player);
@@ -90,13 +95,13 @@ public class MessageProcessor extends Thread {
                 return AuthenticationState.END;
             }
             else {
-                writeQueue.offer(new Message("INVALID_TOKEN", player));
+                player.sendMessage("INVALID_TOKEN");
                 return AuthenticationState.INITIAL_STATE;
             }
 
         }
         else {
-            writeQueue.offer(new Message("INVALID_RESPONSE",player));
+            player.sendMessage("INVALID_RESPONSE");
             return AuthenticationState.INITIAL_STATE;
         }
     }
@@ -115,7 +120,7 @@ public class MessageProcessor extends Thread {
                     return dealWithToken(clientMessage, player);
                 }
                 else{
-                    writeQueue.offer(new Message("INVALID_RESPOSNE",player));
+                    player.sendMessage("INVALID_RESPOSNE");
                     return AuthenticationState.INITIAL_STATE;
                 }
 

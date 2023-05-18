@@ -36,6 +36,7 @@ public class Team {
     public boolean teamHasPlayer(Player newPlayer){
         for(int i=0;i<players.size();i++) {
             if (Objects.equals(players.get(i).getUsername(), newPlayer.getUsername())) {
+                newPlayer.setSkillLevel(players.get(i).getSkillLevel());
                 players.set(i, newPlayer);
                 return true;
             }

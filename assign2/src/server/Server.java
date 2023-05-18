@@ -19,7 +19,7 @@ public class Server extends Thread
     public final int port;
 
 
-    public HashMap<String,String> tokenToUsername;
+    public final HashMap<String,String> tokenToUsername;
     public final List<Player> players_waiting;
 
     public List<Game> games;
@@ -103,14 +103,6 @@ public class Server extends Thread
 
     private class Matchmaker extends Thread {
 
-        private boolean playersAreConnected(List<Player> players){
-            for(Player player:players){
-                if(!player.isConnected())
-                    return false;
-            }
-            return true;
-        }
-
         @Override
         public void run() {
             boolean startedGame=false;
@@ -156,7 +148,7 @@ public class Server extends Thread
                             }
                         }
 
-                        if (matchedPlayers.size() == NUMBER_OF_PLAYERS_PER_GAME && playersAreConnected(matchedPlayers)) {
+                        if (matchedPlayers.size() == NUMBER_OF_PLAYERS_PER_GAME) {
                             playerQueueLock.readLock().unlock();
                             playerQueueLock.writeLock().lock();
                             try {

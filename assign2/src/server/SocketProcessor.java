@@ -9,19 +9,19 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 public class SocketProcessor implements Runnable{
-    private Queue<Socket> inboundSocketQueue;
+    private final Queue<Socket> inboundSocketQueue;
     private long nextSocketId = 16 * 1024;
-    private Selector readSelector;
-    private Selector writeSelector;
-    private Server server;
+    private final Selector readSelector;
+    private final Selector writeSelector;
+    private final Server server;
 
-    private ByteBuffer readByteBuffer  = ByteBuffer.allocate(1024 * 1024);
-    private ByteBuffer writeByteBuffer = ByteBuffer.allocate(1024 * 1024);
-    private Set<Socket> emptyToNonEmptySockets = new HashSet<>();
-    private Set<Socket> nonEmptyToEmptySockets = new HashSet<>();
-    private Queue<Message> outboundMessageQueue = new LinkedList<>();
-    private Map<Long, Socket> socketMap = new HashMap<>();
-    private ExecutorService processorThreadPool;
+    private final ByteBuffer readByteBuffer  = ByteBuffer.allocate(1024 * 1024);
+    private final ByteBuffer writeByteBuffer = ByteBuffer.allocate(1024 * 1024);
+    private final Set<Socket> emptyToNonEmptySockets = new HashSet<>();
+    private final Set<Socket> nonEmptyToEmptySockets = new HashSet<>();
+    private final Queue<Message> outboundMessageQueue = new LinkedList<>();
+    private final Map<Long, Socket> socketMap = new HashMap<>();
+    private final ExecutorService processorThreadPool;
 
     public SocketProcessor(Server server,Queue<Socket> inboundSocketQueue) throws IOException{
         this.inboundSocketQueue = inboundSocketQueue;
@@ -103,7 +103,7 @@ public class SocketProcessor implements Runnable{
             if (fullMessages.size() > 0) {
                 for (Message message : fullMessages) {
                     message.player.obtainLock();
-                    MessageProcessor messageProcessor = new MessageProcessor(server, outboundMessageQueue, message);
+                    MessageProcessor messageProcessor = new MessageProcessor(server, message);
                     processorThreadPool.execute(messageProcessor);  //the message processor will eventually push outgoing messages into a MessageWriter for this socket.
                 }
                 fullMessages.clear();
@@ -172,7 +172,10 @@ public class SocketProcessor implements Runnable{
     }
 
     private void takeNewOutboundMessages() {
-        Message outMessage = this.outboundMessageQueue.poll();
+        Message outMessage;
+        synchronized (outboundMessageQueue) {
+            outMessage = this.outboundMessageQueue.poll();
+        }
         while(outMessage != null){
             Socket socket = this.socketMap.get(outMessage.player.getSocketId());
 
@@ -181,13 +184,14 @@ public class SocketProcessor implements Runnable{
                 if(messageWriter.isEmpty()){
                     messageWriter.enqueue(outMessage);
                     nonEmptyToEmptySockets.remove(socket);
-                    emptyToNonEmptySockets.add(socket);    //not necessary if removed from nonEmptyToEmptySockets in prev. statement.
+                    emptyToNonEmptySockets.add(socket);
                 } else{
                     messageWriter.enqueue(outMessage);
                 }
             }
-
-            outMessage = this.outboundMessageQueue.poll();
+            synchronized (outboundMessageQueue) {
+                outMessage = this.outboundMessageQueue.poll();
+            }
         }
     }
 

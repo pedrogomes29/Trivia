@@ -101,7 +101,9 @@ public class Player {
     }
 
     public void sendMessage(String message){
-        writeQueue.offer(new Message(message, this));
+        synchronized (writeQueue) {
+            writeQueue.offer(new Message(message, this));
+        }
     }
     public void setUsername(String username){
         this.username = username;
@@ -109,10 +111,6 @@ public class Player {
 
     public void authenticate(){
         this.isAuthenticated = true;
-    }
-
-    public boolean isConnected(){
-        return true;
     }
 
     public Game getGame(){ return game;}
