@@ -15,14 +15,14 @@ public class Game {
 
     private final List<Team> teams;
 
-    private final PlayerDatabase db;
+    private final Server server;
     private final Lock answerLock;
 
-    public Game(List<Player> players, int numberOfRounds, PlayerDatabase db){
+    public Game(List<Player> players, int numberOfRounds, Server server){
         this.players = players;
         this.teams = new ArrayList<>();
         this.numberOfRounds = numberOfRounds;
-        this.db = db;
+        this.server = server;
         this.answerLock = new ReentrantLock();
         this.separatePlayersIntoTeams();
         this.questions = new ArrayList<>();
@@ -125,8 +125,9 @@ public class Game {
         this.sendMessageToTeam(teams.get(0), "GAME OVER");
         this.sendMessageToTeam(teams.get(1), "GAME OVER");
         for (Player player : players) {
-            db.setPlayerSkillLevel(player.getUsername(), player.getSkillLevel());
+            server.db.setPlayerSkillLevel(player.getUsername(), player.getSkillLevel());
         }
+        server.games.remove(this);
     }
 
     public boolean gameHasPlayer(Player player){

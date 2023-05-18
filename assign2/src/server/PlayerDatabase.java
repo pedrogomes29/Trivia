@@ -1,4 +1,6 @@
 package server;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.security.MessageDigest;
@@ -33,7 +35,14 @@ public class PlayerDatabase {
         lock = new ReentrantReadWriteLock();
         saltGenerator = new SecureRandom();
         try {
-            RandomAccessFile file = new RandomAccessFile(filename, "r");
+            RandomAccessFile file;
+            File checkIfFileExists = new File(filename);
+            if(!checkIfFileExists.exists()){
+                file = new RandomAccessFile(filename, "rw");
+                file.write(("0"+System.lineSeparator()).getBytes());
+                file.close();
+            }
+            file = new RandomAccessFile(filename, "r");
             numPlayers = Integer.parseInt(file.readLine()); //only one thread calls the constructor, before any other threads call any function -> no concurrency
             numPlayersSeekOffset = String.valueOf(numPlayers).length() + System.getProperty("line.separator").length();
             file.close();
