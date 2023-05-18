@@ -24,6 +24,8 @@ public class Player {
     private final Lock lock;
     private final Condition processingCondition;
 
+    private long disconnectTime;
+
     public Player(long socketId,Queue<Message> writeQueue) {
         this.socketId = socketId;
         this.writeQueue = writeQueue;
@@ -33,6 +35,7 @@ public class Player {
         this.lock = new ReentrantLock();
         this.processingCondition = lock.newCondition();
         this.canBeProcessed = true;
+        this.disconnectTime = -1;
     }
 
 
@@ -119,4 +122,15 @@ public class Player {
     public void setTeam(Team team){ this.team = team;}
 
     public Team getTeam(){ return team;}
+
+
+    public void disconnect(){
+        this.disconnectTime = System.currentTimeMillis();
+    }
+    public long timeSinceDisconnect(){
+        if(disconnectTime==-1)
+            return -1;
+        else
+            return System.currentTimeMillis() - disconnectTime;
+    }
 }

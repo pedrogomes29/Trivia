@@ -88,6 +88,7 @@ public class SocketProcessor implements Runnable{
 
         System.out.println("Socket closed: " + socket.player.getSocketId());
         this.socketMap.remove(socket.player.getSocketId());
+        socket.player.disconnect();
         key.attach(null);
         key.cancel();
         key.channel().close();

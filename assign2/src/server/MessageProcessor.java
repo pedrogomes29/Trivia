@@ -79,8 +79,12 @@ public class MessageProcessor extends Thread {
                 player.setSkillLevel(server.db.getSkillLevel(username));
                 if (!server.playerIsPlaying(player) && !server.playerIsWaiting(player)) //function already replaces player if it was playing
                 {
-                    synchronized (server.players_waiting){
+                    server.playerQueueLock.writeLock().lock();
+                    try{
                         server.players_waiting.add(player);
+                    }
+                    finally{
+                        server.playerQueueLock.writeLock().unlock();
                     }
                 }
                 return AuthenticationState.END;
@@ -105,11 +109,6 @@ public class MessageProcessor extends Thread {
             }
             case "REGISTER" ->{
                 return AuthenticationState.REGISTER;
-            }
-            case "EXIT" ->{
-                writeQueue.offer(new Message("EXIT",player));
-                return AuthenticationState.INITIAL_STATE;
-                //todo end socket
             }
             default -> {
                 if(clientMessage.startsWith(("TOKEN"))){
