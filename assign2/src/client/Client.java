@@ -221,7 +221,6 @@ public class Client {
 
                     if (user.ready()) {
                         out.println(user.readLine());
-                        break;
                     }
                 }
             }
