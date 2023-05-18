@@ -31,7 +31,7 @@ public class Server extends Thread
     private final ExecutorService gameThreadPool;
 
     public boolean running = true;
-    private final ReadWriteLock playerQueueLock;
+    public final ReadWriteLock playerQueueLock;
 
     public Server( int port )
     {
@@ -47,18 +47,23 @@ public class Server extends Thread
 
 
     public boolean playerIsWaiting(Player player){
+        boolean isPlayerWaiting = false;
         playerQueueLock.readLock().lock();
-        for (int i = 0; i < players_waiting.size(); i++) {
-            Player playerWaiting = players_waiting.get(i);
-            if (Objects.equals(player.getUsername(), playerWaiting.getUsername())) {
-                player.setMaxSkillGap(playerWaiting.getMaxSkillGap());
-                players_waiting.set(i, player);
-                playerQueueLock.readLock().unlock();
-                return true;
+        try {
+            for (int i = 0; i < players_waiting.size(); i++) {
+                Player playerWaiting = players_waiting.get(i);
+                if (Objects.equals(player.getUsername(), playerWaiting.getUsername())) {
+                    player.setMaxSkillGap(playerWaiting.getMaxSkillGap());
+                    players_waiting.set(i, player);
+                    isPlayerWaiting = true;
+                    break;
+                }
             }
         }
-        playerQueueLock.readLock().unlock();
-        return false;
+        finally {
+            playerQueueLock.readLock().unlock();
+        }
+        return isPlayerWaiting;
     }
     public boolean playerIsPlaying(Player player){
         for(Game game:games){
@@ -124,13 +129,20 @@ public class Server extends Thread
 
                 if (players_waiting.size() >= NUMBER_OF_PLAYERS_PER_GAME) {
                     List<Player> matchedPlayers = new ArrayList<>();
+                    List<Player> idlePlayers = new ArrayList<>();
+
                     playerQueueLock.readLock().lock();
                     for (Player player : players_waiting) {
+                        if(player.timeSinceDisconnect()>=0){
+                            idlePlayers.add(player);
+                            continue;
+                        }
+
                         matchedPlayers.clear();
                         matchedPlayers.add(player);
 
                         for (Player otherPlayer : players_waiting) {
-                            if (player.getSocketId() == otherPlayer.getSocketId()) {
+                            if (player.getSocketId() == otherPlayer.getSocketId() || idlePlayers.contains(otherPlayer)) {
                                 continue;
                             }
 
@@ -147,8 +159,12 @@ public class Server extends Thread
                         if (matchedPlayers.size() == NUMBER_OF_PLAYERS_PER_GAME && playersAreConnected(matchedPlayers)) {
                             playerQueueLock.readLock().unlock();
                             playerQueueLock.writeLock().lock();
-                            players_waiting.removeAll(matchedPlayers);
-                            playerQueueLock.writeLock().unlock();
+                            try {
+                                players_waiting.removeAll(matchedPlayers);
+                            }
+                            finally {
+                                playerQueueLock.writeLock().unlock();
+                            }
                             Game game = new Game(matchedPlayers,NUMBER_OF_ROUNDS);
                             games.add(game);
                             gameThreadPool.execute(game);
@@ -160,8 +176,20 @@ public class Server extends Thread
                         playerQueueLock.readLock().lock();
                     for (Player player : players_waiting)
                         player.increaseSkillGap();      //we could obtain a lock for the player,
-                                                        //but we only change skill gap which is only accessed/changed by this thread
+                                                        //but we only change the skill gap which is only accessed/changed by this thread
                     playerQueueLock.readLock().unlock();
+
+                    playerQueueLock.writeLock().lock();
+                    try {
+                        for(Player player:idlePlayers){
+                            if(player.timeSinceDisconnect() > 2*60*1000){
+                                players_waiting.remove(player);
+                            }
+                        }
+                    }
+                    finally {
+                        playerQueueLock.writeLock().unlock();
+                    }
                 }
 
 
