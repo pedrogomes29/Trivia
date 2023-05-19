@@ -6,6 +6,9 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import static java.lang.Math.max;
+import static java.lang.Math.min;
+
 public class Player {
     private final long socketId;
     private int skillLevel;
@@ -102,7 +105,9 @@ public class Player {
         skillLevel = elo;
     }
 
-    public void increaseSkillLevel(int elo) { skillLevel += elo;}
+    public void increaseSkillLevel(int elo) {
+        this.skillLevel = min(max(1, this.skillLevel + elo), 999);
+    }
 
     public void sendQuestion(int round,List<String> question) {
         if(disconnectTime<0) {

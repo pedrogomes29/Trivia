@@ -258,7 +258,7 @@ public class Game {
             } else {
                 player.increaseSkillLevel(-1);
                 player.getTeam().increaseScore(-1);
-                this.sendMessageToTeam(player.getTeam(), "ANSWER_Wrong answer, " + clientMessage + ", answered by: " + player.getUsername() + ", right answer was: " + questions.get(player.getTeam().getQuestionIndex()).get(1)
+                this.sendMessageToTeam(player.getTeam(), "ANSWER_Wrong answer, " + clientMessage + ", answered by: " + player.getUsername() + ", right answer was: " + player.getTeam().getCurrentQuestion().get(1)
                         + ", Team Score: " + player.getTeam().getScore() + ", Player's Skill Level: " + player.getSkillLevel());
             }
             sendQuestionToTeam(player.getTeam());
