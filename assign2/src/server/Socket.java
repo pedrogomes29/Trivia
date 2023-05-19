@@ -6,17 +6,18 @@ import java.nio.channels.SocketChannel;
 
 public class Socket {
     public Player player;
-    public boolean endOfStreamReached = false;
-    public SocketChannel socketChannel = null;
+    public boolean endOfStreamReached;
+    public SocketChannel socketChannel;
     public MessageReader messageReader;
     public MessageWriter  messageWriter;
 
     public Socket(SocketChannel socketChannel) {
-
         this.socketChannel = socketChannel;
         this.messageReader = new MessageReader(this);
         this.messageWriter = new MessageWriter(this);
+        this.endOfStreamReached = false;
     }
+
     public int read(ByteBuffer byteBuffer) throws IOException {
         int bytesRead = this.socketChannel.read(byteBuffer);
         int totalBytesRead = bytesRead;

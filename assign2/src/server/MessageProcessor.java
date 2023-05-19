@@ -82,15 +82,9 @@ public class MessageProcessor extends Thread {
                 player.setUsername(username);
                 player.authenticate();
                 player.setSkillLevel(server.db.getSkillLevel(username));
-                if (!server.playerIsPlaying(player) && !server.playerIsWaiting(player)) //function already replaces player if it was playing
+                if (!server.playerIsPlaying(player) && !server.playerIsWaiting(player)) //these functions already replaces player if it was playing/waiting
                 {
-                    server.playerQueueLock.writeLock().lock();
-                    try{
-                        server.players_waiting.add(player);
-                    }
-                    finally{
-                        server.playerQueueLock.writeLock().unlock();
-                    }
+                    server.addPlayerToQueue(player);
                 }
                 return AuthenticationState.END;
             }
@@ -136,9 +130,7 @@ public class MessageProcessor extends Thread {
             Player player = request.player;
             if (player.isAuthenticated()) {
                 if (clientMessage.equals("PLAY_AGAIN")){
-                    synchronized (server.players_waiting){
-                        server.players_waiting.add(player);
-                    }
+                    server.addPlayerToQueue(player);
                 }
                 else
                 {

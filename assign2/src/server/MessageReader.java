@@ -42,7 +42,6 @@ public class MessageReader {
         System.arraycopy(lastMessage, 0, src, 0, lastMessage.length);
         byteBuffer.get(0,src,lastMessage.length,byteBuffer.remaining());
         int startIndex = 0;
-        String srcString = new String(src);
         int endIndex = findNextLineBreak(src,startIndex);
         while(endIndex != -1) {
             messages.add(new Message(Arrays.copyOfRange(src, startIndex, endIndex + 1),this.socket.player));

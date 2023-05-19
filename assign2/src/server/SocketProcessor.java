@@ -58,8 +58,10 @@ public class SocketProcessor implements Runnable{
     }
 
     public void takeNewSockets() throws IOException {
-        Socket newSocket = this.inboundSocketQueue.poll();
-
+        Socket newSocket;
+        synchronized (this.inboundSocketQueue) {
+            newSocket = this.inboundSocketQueue.poll();
+        }
         while(newSocket != null){
             newSocket.player = new Player(this.nextSocketId++,outboundMessageQueue);
             newSocket.socketChannel.configureBlocking(false);
@@ -69,7 +71,9 @@ public class SocketProcessor implements Runnable{
             SelectionKey key = newSocket.socketChannel.register(this.readSelector, SelectionKey.OP_READ);
             key.attach(newSocket);
 
-            newSocket = this.inboundSocketQueue.poll();
+            synchronized (this.inboundSocketQueue) {
+                newSocket = this.inboundSocketQueue.poll();
+            }
         }
     }
 

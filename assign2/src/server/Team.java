@@ -2,6 +2,8 @@ package server;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Team {
     private final int id;
@@ -10,10 +12,13 @@ public class Team {
     private int score;
     private int skillLevel;
     private int questionIndex;
+    private final Game game;
+
+    public ReadWriteLock lock;
 
     private List<String> currentQuestion;
 
-    public Team(List<Player> players, int id) {
+    public Team(List<Player> players, int id,Game game) {
         this.players = players;
         this.score = 0;
         this.skillLevel = 0;
@@ -24,17 +29,43 @@ public class Team {
         this.id = id;
         this.questionIndex = 0;
         this.currentQuestion = null;
+        this.game = game;
+        this.lock = new ReentrantReadWriteLock();
     }
 
     public boolean teamHasPlayer(Player newPlayer){
-        for(int i=0;i<players.size();i++) {
-            if (Objects.equals(players.get(i).getUsername(), newPlayer.getUsername())) {
-                newPlayer.setSkillLevel(players.get(i).getSkillLevel());
-                players.set(i, newPlayer);
-                return true;
+        boolean hasPlayer = false;
+        this.lock.readLock().lock();
+        try {
+            for (int i = 0; i < players.size(); i++) {
+                Player playerWaiting = players.get(i);
+                if (Objects.equals(players.get(i).getUsername(), newPlayer.getUsername())) {
+                    this.lock.readLock().unlock();
+                    newPlayer.setSkillLevel(playerWaiting.getSkillLevel());
+                    playerWaiting.unauthenticate();
+                    playerWaiting.authenticationState = AuthenticationState.INITIAL_STATE;
+                    playerWaiting.sendMessage("REMOTE_LOG_IN");
+                    this.lock.writeLock().lock(); //Only chance for someone to have changed this array
+                                                  //between releasing the read lock and obtaining the write lock
+                                                  //would be if someone else was logging in to the same account simmultaneously
+                                                  //either way, the index doesn't change
+                    try {
+                        players.set(i, newPlayer);
+                    } finally {
+                        this.lock.writeLock().unlock();
+                    }
+                    newPlayer.setGame(this.game);
+                    newPlayer.setTeam(this);
+                    hasPlayer = true;
+                    break;
+                }
             }
         }
-        return false;
+        finally{
+            if(!hasPlayer)
+                this.lock.readLock().unlock();
+        }
+        return hasPlayer;
     }
 
 
@@ -67,8 +98,14 @@ public class Team {
 
     public String teamMembersToString(){
         StringBuilder teamMembers = new StringBuilder();
-        for (Player player: players){
-            teamMembers.append(player.getUsername()).append("-");
+        this.lock.readLock().lock();
+        try {
+            for (Player player : players) {
+                teamMembers.append(player.getUsername()).append("-");
+            }
+        }
+        finally{
+            this.lock.readLock().unlock();
         }
         return teamMembers.substring(0, teamMembers.length()-1);
     }

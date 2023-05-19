@@ -21,6 +21,8 @@ public class Player {
     private Game game;
 
     private boolean canBeProcessed;
+
+    private final Lock skillGapLock;
     private final Lock lock;
     private final Condition processingCondition;
 
@@ -33,6 +35,7 @@ public class Player {
         this.maxSkillGap = 5;
         this.isAuthenticated = false;
         this.lock = new ReentrantLock();
+        this.skillGapLock = new ReentrantLock();
         this.processingCondition = lock.newCondition();
         this.canBeProcessed = true;
         this.disconnectTime = -1;
@@ -79,15 +82,20 @@ public class Player {
     }
 
     public int getMaxSkillGap(){
-        return maxSkillGap;
+        skillGapLock.lock();
+        int skillGap =  maxSkillGap;
+        skillGapLock.unlock();
+        return skillGap;
     }
 
     public void increaseSkillGap(){
+        skillGapLock.lock();
         maxSkillGap++;
+        skillGapLock.unlock();
     }
 
 
-    public void setMaxSkillGap(int maxSkillGap){this.maxSkillGap=maxSkillGap;}
+    public void setMaxSkillGap(int maxSkillGap){this.maxSkillGap=maxSkillGap;} //no race conditions (only used before putting the player in the queue)
 
 
     public void setSkillLevel(int elo){
@@ -97,12 +105,18 @@ public class Player {
     public void increaseSkillLevel(int elo) { skillLevel += elo;}
 
     public void sendQuestion(int round,List<String> question) {
-            writeQueue.offer(new Message("QUESTION_" + round + "_" +question.get(0),this));
+        if(disconnectTime<0) {
+            synchronized (writeQueue) {
+                writeQueue.offer(new Message("QUESTION_" + round + "_" + question.get(0), this));
+            }
+        }
     }
 
     public void sendMessage(String message){
-        synchronized (writeQueue) {
-            writeQueue.offer(new Message(message, this));
+        if(disconnectTime<0) {
+            synchronized (writeQueue) {
+                writeQueue.offer(new Message(message, this));
+            }
         }
     }
     public void setUsername(String username){
@@ -111,6 +125,9 @@ public class Player {
 
     public void authenticate(){
         this.isAuthenticated = true;
+    }
+    public void unauthenticate(){
+        this.isAuthenticated = false;
     }
 
     public Game getGame(){ return game;}

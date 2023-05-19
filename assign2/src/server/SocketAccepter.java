@@ -6,12 +6,10 @@ import java.nio.channels.SocketChannel;
 import java.util.Queue;
 
 public class SocketAccepter implements Runnable{
-    private Server server;
-    private ServerSocketChannel serverSocket;
+    private final Server server;
+    private final Queue<Socket> socketQueue;
 
-    private Queue<Socket> socketQueue;
-
-    public SocketAccepter(Server server, Queue socketQueue)  {
+    public SocketAccepter(Server server, Queue<Socket> socketQueue)  {
         this.server     = server;
         this.socketQueue = socketQueue;
     }
@@ -19,9 +17,10 @@ public class SocketAccepter implements Runnable{
 
 
     public void run() {
+        ServerSocketChannel serverSocket;
         try{
-            this.serverSocket = ServerSocketChannel.open();
-            this.serverSocket.bind(new InetSocketAddress(server.port));
+            serverSocket = ServerSocketChannel.open();
+            serverSocket.bind(new InetSocketAddress(server.port));
         } catch(IOException e){
             e.printStackTrace();
             return;
@@ -30,11 +29,12 @@ public class SocketAccepter implements Runnable{
 
         while(server.running){
             try{
-                SocketChannel socketChannel = this.serverSocket.accept();
+                SocketChannel socketChannel = serverSocket.accept();
 
                 System.out.println("Socket accepted: " + socketChannel);
-
-                this.socketQueue.add(new Socket(socketChannel));
+                synchronized (this.socketQueue) {
+                    this.socketQueue.add(new Socket(socketChannel));
+                }
 
             } catch(IOException e){
                 e.printStackTrace();

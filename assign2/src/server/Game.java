@@ -11,7 +11,6 @@ public class Game {
     private final List<List<String>> questions;
 
     private final int numberOfRounds;
-    private final List<Player> players;
 
     private final List<Team> teams;
 
@@ -19,17 +18,16 @@ public class Game {
     private final Lock answerLock;
 
     public Game(List<Player> players, int numberOfRounds, Server server){
-        this.players = players;
         this.teams = new ArrayList<>();
         this.numberOfRounds = numberOfRounds;
         this.server = server;
         this.answerLock = new ReentrantLock();
-        this.separatePlayersIntoTeams();
+        this.separatePlayersIntoTeams(players);
         this.questions = new ArrayList<>();
         this.readQuestionsFromFile();
     }
 
-    private void separatePlayersIntoTeams() {
+    private void separatePlayersIntoTeams(List<Player> players) {
         players.sort(Comparator.comparingInt(Player::getSkillLevel));
         List<Player> teamAPlayers = new ArrayList<>();
         List<Player> teamBPlayers = new ArrayList<>();
@@ -42,8 +40,8 @@ public class Game {
                 teamBPlayers.add(player);
             }
         }
-        Team teamA = new Team(teamAPlayers, 0);
-        Team teamB = new Team(teamBPlayers, 1);
+        Team teamA = new Team(teamAPlayers, 0,this);
+        Team teamB = new Team(teamBPlayers, 1,this);
         for (int i = 0; i < players.size(); i++){
             Player player = players.get(i);
             if (i % 2 == 0) {
@@ -56,17 +54,21 @@ public class Game {
         this.teams.add(teamB);
     }
 
+    private String removeStartingAndEndingLetter(String s){
+        return s.substring(1, s.length() - 1);
+    }
     private void readQuestionsFromFile() {
 
         try (BufferedReader br = new BufferedReader(new FileReader("trivia.txt"))) {
             String line;
             while ((line = br.readLine()) != null) {
-                line = line.replace("[", "");
-                line = line.replace("]", "");
+                line = removeStartingAndEndingLetter(line); //remove []
                 String[] parts = line.split(",");
                 List<String> question = new ArrayList<>();
-                question.add(parts[0].substring(1, parts[0].length() - 1));
-                question.add(parts[1].substring(2, parts[1].length() - 1));
+                String part1 = String.join(",",Arrays.copyOfRange(parts, 0, parts.length-1));
+                String part2 = parts[parts.length-1];
+                question.add(removeStartingAndEndingLetter(part1.trim())); //remove ""
+                question.add(removeStartingAndEndingLetter(part2.trim())); //remove ""
                 questions.add(question);
             }
         } catch (IOException e) {
@@ -101,21 +103,52 @@ public class Game {
             System.out.println("Team 0 wins");
             this.sendMessageToTeam(teams.get(0), "CONCLUSIONS_You win");
             this.sendMessageToTeam(teams.get(1), "CONCLUSIONS_You lose");
-            for (Player player : teams.get(0).getPlayers()) {
-                player.increaseSkillLevel(10);
+
+            teams.get(0).lock.readLock().lock();
+            try {
+                for (Player player : teams.get(0).getPlayers()) {
+                    player.increaseSkillLevel(10);
+                }
             }
-            for (Player player : teams.get(1).getPlayers()) {
-                player.increaseSkillLevel(-10);
+            finally{
+                teams.get(0).lock.readLock().unlock();
             }
+
+            teams.get(1).lock.readLock().lock();
+            try {
+
+                for (Player player : teams.get(1).getPlayers()) {
+                    player.increaseSkillLevel(-10);
+                }
+            }
+            finally{
+                teams.get(1).lock.readLock().unlock();
+            }
+
         } else if (teams.get(0).getScore() < teams.get(1).getScore()) {
             System.out.println("Team 1 wins");
             this.sendMessageToTeam(teams.get(1), "CONCLUSIONS_You win");
             this.sendMessageToTeam(teams.get(0), "CONCLUSIONS_You lose");
-            for (Player player : teams.get(1).getPlayers()) {
-                player.increaseSkillLevel(10);
+
+            teams.get(1).lock.readLock().lock();
+            try {
+
+                for (Player player : teams.get(1).getPlayers()) {
+                    player.increaseSkillLevel(10);
+                }
             }
-            for (Player player : teams.get(0).getPlayers()) {
-                player.increaseSkillLevel(-10);
+            finally{
+                teams.get(1).lock.readLock().unlock();
+            }
+
+            teams.get(0).lock.readLock().lock();
+            try {
+                for (Player player : teams.get(0).getPlayers()) {
+                    player.increaseSkillLevel(-10);
+                }
+            }
+            finally{
+                teams.get(0).lock.readLock().unlock();
             }
         } else {
             System.out.println("Draw");
@@ -124,16 +157,40 @@ public class Game {
         }
         this.sendMessageToTeam(teams.get(0), "GAME OVER");
         this.sendMessageToTeam(teams.get(1), "GAME OVER");
-        for (Player player : players) {
-            server.db.setPlayerSkillLevel(player.getUsername(), player.getSkillLevel());
+
+        teams.get(0).lock.readLock().lock();
+        try {
+            for (Player player : teams.get(0).getPlayers()) {
+                server.db.setPlayerSkillLevel(player.getUsername(), player.getSkillLevel());
+            }
         }
-        server.games.remove(this);
+        finally{
+            teams.get(0).lock.readLock().unlock();
+        }
+
+        teams.get(1).lock.readLock().lock();
+        try {
+            for (Player player : teams.get(1).getPlayers()) {
+                server.db.setPlayerSkillLevel(player.getUsername(), player.getSkillLevel());
+            }
+        }
+        finally{
+            teams.get(1).lock.readLock().unlock();
+        }
+
+
+        synchronized (server.games) {
+            server.games.remove(this);
+        }
     }
 
     public boolean gameHasPlayer(Player player){
         for(Team team:teams){
-            if(team.teamHasPlayer(player))
+            if(team.teamHasPlayer(player)) {
+                player.sendMessage("RECONNECTED");
+                player.sendQuestion(team.getQuestionIndex(),team.getCurrentQuestion());
                 return true;
+            }
         }
         return false;
     }
@@ -142,10 +199,18 @@ public class Game {
     public void sendQuestionToTeam(Team team){
         if (team.getQuestionIndex() < numberOfRounds) {
             //get random question
-            List<String> question = questions.get(new Random().nextInt(questions.size()));
+            int questionIndex = new Random().nextInt(questions.size());
+            List<String> question = questions.get(questionIndex);
+            questions.remove(questionIndex);
             List<Player> teamPlayers = team.getPlayers();
-            for (Player player: teamPlayers){
-                player.sendQuestion(team.getQuestionIndex(),question);
+            team.lock.readLock().lock();
+            try {
+                for (Player player : teamPlayers) {
+                    player.sendQuestion(team.getQuestionIndex(), question);
+                }
+            }
+            finally{
+                team.lock.readLock().unlock();
             }
             team.setCurrentQuestion(question);
         }
@@ -159,8 +224,13 @@ public class Game {
     }
     public void sendMessageToTeam(Team team, String message){
         List<Player> teamPlayers = team.getPlayers();
-        for (Player player: teamPlayers){
-            player.sendMessage(message);
+        team.lock.readLock().lock();
+        try {
+            for (Player player : teamPlayers)
+                player.sendMessage(message);
+        }
+        finally{
+            team.lock.readLock().unlock();
         }
     }
 

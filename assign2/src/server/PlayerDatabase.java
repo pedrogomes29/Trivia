@@ -1,6 +1,5 @@
 package server;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.security.MessageDigest;
@@ -11,7 +10,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class PlayerDatabase {
 
-    private SecureRandom saltGenerator;
+    private final SecureRandom saltGenerator;
     private long numPlayers;
 
     private final String filename;
@@ -169,10 +168,11 @@ public class PlayerDatabase {
     }
 
 
-    public static String sha256WithSalt(String password) throws NoSuchAlgorithmException {
-        SecureRandom saltGenerator = new SecureRandom();
+    public String sha256WithSalt(String password) throws NoSuchAlgorithmException {
         byte[] salt = new byte[16];
-        saltGenerator.nextBytes(salt);
+        synchronized (saltGenerator) {
+            saltGenerator.nextBytes(salt);
+        }
         StringBuilder saltString = new StringBuilder();
         for (int i = 0; i < salt.length; i++) {
             saltString.append(Integer.toString((salt[i] & 0xff) + 0x100, 16)
@@ -312,8 +312,8 @@ public class PlayerDatabase {
     public int getSkillLevel(String username) {
         try {
             RandomAccessFile file = new RandomAccessFile(filename, "r");
-            lock.readLock().lock();
             byte[] buffer = null;
+            lock.readLock().lock();
             try {
                 long userIndex = getUserIndex(username, file);
                 if (userIndex < 0)

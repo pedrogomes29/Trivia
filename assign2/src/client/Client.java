@@ -1,6 +1,7 @@
 package client;
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
@@ -29,6 +30,7 @@ public class Client {
     enum GameState{
         ESTABLISHING_CONNECTION,
         PLAYING,
+        WAITING,
         GAME_OVER,
         QUIT
     }
@@ -59,7 +61,8 @@ public class Client {
         }
         catch( Exception e )
         {
-            e.printStackTrace();
+            System.out.println("Couldn't establish a connection to the server");
+            gameState = GameState.QUIT;
         }
     }
 
@@ -73,7 +76,7 @@ public class Client {
         }
         catch( Exception e )
         {
-            e.printStackTrace();
+            System.out.println("Couldn't close the connection to the server");
         }
     }
 
@@ -203,8 +206,8 @@ public class Client {
     }
 
 
+
     public void play(){
-        System.out.println("Waiting for enough players to start a game...");
         try {
             while (true) {
                 String serverText = in.readLine();
@@ -214,6 +217,11 @@ public class Client {
                 } else {
                     if (serverText.equals("GAME OVER")) {
                         this.gameState = GameState.GAME_OVER;
+                        break;
+                    }
+                    if (serverText.equals("REMOTE_LOG_IN")) {
+                        System.out.println(System.lineSeparator()+"Someone has logged in to your account from a different location");
+                        this.gameState = GameState.ESTABLISHING_CONNECTION;
                         break;
                     }
                     String[] questionMessage = serverText.split("_");
@@ -230,29 +238,57 @@ public class Client {
                 }
             }
         }
-
-        catch( Exception e )
-        {
-            System.out.println("Lost connection..");
-            e.printStackTrace();
+        catch (SocketException e) {
             reestablishConnection();
-            if(gameState == GameState.PLAYING) {
-                System.out.println("Restablished connection");
-                //voltar a jogar
-            }
-
         }
+        catch(Exception e){
+            System.out.println("Something unexpected happened");
+            e.printStackTrace(); //would remove in production;
+            gameState = GameState.QUIT;
+        }
+
+    }
+
+    public void waiting(){
+        try {
+            String serverText = in.readLine();
+            if(Objects.equals(serverText, "RECONNECTED")){
+                this.gameState = GameState.PLAYING;
+                return;
+            }
+            else{
+                String[] serverTextSplit = serverText.split("_");
+                if (Objects.equals(serverTextSplit[0], "QUEUE") && Objects.equals(serverTextSplit[1], "POSITION")){
+                    System.out.println("You have been placed in the queue in position " + serverTextSplit[2]);
+                    serverText = in.readLine();
+                    serverTextSplit = serverText.split("_");
+                    if (Objects.equals(serverTextSplit[0], "PLAYERS") && Objects.equals(serverTextSplit[1], "WAITING")){
+                        System.out.println("There are " + serverTextSplit[2] + " players waiting");
+                        System.out.println("Waiting for enough players to start the game...");
+                        this.gameState = GameState.PLAYING;
+                        return;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Something unexpected happened");
+        this.gameState = GameState.QUIT;
     }
 
 
     public void reestablishConnection(){
         int num_attempts = 1;
-        System.out.println("Lost connection to the server");
+        System.out.println("Lost connection to the server, trying to reestablish it");
         while(num_attempts<8) {
             try {
                 if(num_attempts>1)
                     Thread.sleep(1000*(long) Math.pow(2,num_attempts));
 
+                socket.close();
+                out.close();
+                in.close();
                 // Connect to the server
                 socket = new Socket(host, port);
                 out = new PrintStream(socket.getOutputStream(), true);
@@ -264,7 +300,7 @@ public class Client {
                     out.println("TOKEN " + token);
                     String serverResponse = in.readLine();
                     if (Objects.equals(serverResponse, "CONNECTION_ESTABLISHED")) {
-                        gameState = GameState.PLAYING;
+                        gameState = GameState.WAITING;
                     } else if (Objects.equals(serverResponse, "INVALID_TOKEN")) {
                         token = null;
                         if (gameState != GameState.ESTABLISHING_CONNECTION) {
@@ -272,6 +308,9 @@ public class Client {
                             System.out.println("We regret to inform you that your queue position/game progress was lost");
                         }
                         establishConnection();
+                        if(gameState == GameState.WAITING){
+                            return;
+                        }
                     } else {
                         num_attempts++;
                     }
@@ -304,11 +343,11 @@ public class Client {
                                 do {
                                     serverResponse = receive_token(in.readLine());
                                 } while (serverResponse != ServerResponse.CONNECTION_ESTABLISHED);
-                                gameState = GameState.PLAYING;
+                                gameState = GameState.WAITING;
                                 System.out.println("Logged in succesfully");
                             }
                             case CONNECTION_ESTABLISHED -> {
-                                gameState = GameState.PLAYING;
+                                gameState = GameState.WAITING;
                                 System.out.println("Logged in succesfully");
                             }
                         }
@@ -328,11 +367,11 @@ public class Client {
                                 do {
                                     serverResponse = receive_token(in.readLine());
                                 } while (serverResponse != ServerResponse.CONNECTION_ESTABLISHED);
-                                gameState = GameState.PLAYING;
+                                gameState = GameState.WAITING;
                                 System.out.println("Registered succesfully");
                             }
                             case CONNECTION_ESTABLISHED -> {
-                                gameState = GameState.PLAYING;
+                                gameState = GameState.WAITING;
                                 System.out.println("Registered succesfully");
                             }
                         }
@@ -340,30 +379,40 @@ public class Client {
                     case EXIT -> gameState = GameState.QUIT;
                 }
 
-            } catch (Exception e) {
-                e.printStackTrace();
+            }
+            catch (SocketException e) {
                 reestablishConnection();
+            }
+            catch(Exception e){
+                System.out.println("Something unexpected happened");
+                e.printStackTrace(); //would remove in production;
+                gameState = GameState.QUIT;
             }
         }
     }
     public static void main( String[] args ) {
         if(args.length>0){
             if(args[0].equals("clear_cookies")){
-                Path path = Paths.get( "token.txt");
-                System.out.println(path.toAbsolutePath());
-                File myObj = new File( "token.txt");
-                myObj.delete();
+                try {
+                    FileWriter fileWriter = new FileWriter("token.txt");
+                    BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+                    bufferedWriter.write("");
+                    bufferedWriter.close();
+                    fileWriter.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
 
         }
 
         Client client = new Client ("localhost", 8080 );
         String token = client.get_token();
-        if(token!=null){
+        if(token!=null && client.gameState!=GameState.QUIT){
             client.token = token;
             try {
                 if (Objects.requireNonNull(client.send_token()) == ServerResponse.CONNECTION_ESTABLISHED) {
-                    client.gameState = GameState.PLAYING;
+                    client.gameState = GameState.WAITING;
                 } else {
                     client.gameState = GameState.ESTABLISHING_CONNECTION;
                     client.token = null;
@@ -377,6 +426,7 @@ public class Client {
             switch (client.gameState) {
                 case ESTABLISHING_CONNECTION -> client.establishConnection();
                 case PLAYING -> client.play();
+                case WAITING -> client.waiting();
                 case GAME_OVER -> client.dealWithGameOver();
                 default -> System.out.println("Something unexpected happened");
             }
@@ -395,8 +445,8 @@ public class Client {
         } while (!input.equals("1") && !input.equals("2"));
         if (input.equals("1")) {
             out.println("PLAY_AGAIN");
-            this.gameState = GameState.PLAYING;
-        } else {
+            this.gameState = GameState.WAITING;
+        }else {
             this.gameState = GameState.QUIT;
         }
     }
