@@ -150,90 +150,74 @@ public class Server
                     startedGame = false;
                 }
 
-
+                List<Integer> matchedPlayersIdx = new ArrayList<>();
+                List<Integer> idlePlayersIdx = new ArrayList<>();
                 playerQueueLock.readLock().lock();
-                if (players_waiting.size() >= NUMBER_OF_PLAYERS_PER_GAME) {
-                    List<Player> matchedPlayers = new ArrayList<>();
-                    List<Player> idlePlayers = new ArrayList<>();
-                    for (Player player : players_waiting) {
-                        if(player.timeSinceDisconnect()>=0){
-                            idlePlayers.add(player);
+                for (int i=0;i<players_waiting.size();i++) {
+                    Player player = players_waiting.get(i);
+                    if(player.timeSinceDisconnect()>=0){
+                        idlePlayersIdx.add(i);
+                        continue;
+                    }
+
+                    matchedPlayersIdx.clear();
+                    matchedPlayersIdx.add(i);
+
+                    for (int j=0;j<players_waiting.size();j++) {
+                        Player otherPlayer = players_waiting.get(j);
+                        if (player.getSocketId() == otherPlayer.getSocketId() || otherPlayer.timeSinceDisconnect()>=0) {
                             continue;
                         }
 
-                        matchedPlayers.clear();
-                        matchedPlayers.add(player);
+                        int skillDifference = Math.abs(player.getSkillLevel() - otherPlayer.getSkillLevel());
+                        if (skillDifference <= player.getMaxSkillGap() && skillDifference <= otherPlayer.getMaxSkillGap()) {
+                            matchedPlayersIdx.add(j);
 
-                        for (Player otherPlayer : players_waiting) {
-                            if (player.getSocketId() == otherPlayer.getSocketId() || otherPlayer.timeSinceDisconnect()>=0) {
-                                continue;
+                            if (matchedPlayersIdx.size() == NUMBER_OF_PLAYERS_PER_GAME) {
+                                break;
                             }
-
-                            int skillDifference = Math.abs(player.getSkillLevel() - otherPlayer.getSkillLevel());
-                            if (skillDifference <= player.getMaxSkillGap() && skillDifference <= otherPlayer.getMaxSkillGap()) {
-                                matchedPlayers.add(otherPlayer);
-
-                                if (matchedPlayers.size() == NUMBER_OF_PLAYERS_PER_GAME) {
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (matchedPlayers.size() == NUMBER_OF_PLAYERS_PER_GAME) {
-                            startedGame = true;
-                            break;
                         }
                     }
 
-                    playerQueueLock.readLock().unlock();
-                    playerQueueLock.writeLock().lock();
-                    try {
-                        for (Player player : players_waiting) {
-                            boolean playerWillBeRemoved = false;
-
-                            if(startedGame) {
-                                for (int i = 0; i < matchedPlayers.size(); i++) {
-                                    Player matchedPlayer = matchedPlayers.get(i);
-                                    if (Objects.equals(player.getUsername(), matchedPlayer.getUsername())) {
-                                        playerWillBeRemoved = true;
-                                        if (player != matchedPlayer)
-                                            matchedPlayers.set(i, player);
-                                        //between releasing the read lock and obtaining the write lock
-                                        //some player could have logged in and replaced the player object
-                                        //in the players_waiting array, so matchedPlayers needs to be updated
-                                    }
-                                }
-                            }
-
-                            for (Player idlePlayer : idlePlayers) {
-                                if (Objects.equals(player.getUsername(), idlePlayer.getUsername()) && player == idlePlayer &&
-                                        player.timeSinceDisconnect() > 2 * 60 * 1000) { //2 minutes
-                                    players_waiting.remove(player);
-                                    System.out.println("Player " + player.getUsername() + " has been idle for too long, so he was removed from the queue");
-                                }
-                            }
-
-                            if(!playerWillBeRemoved)
-                                player.increaseSkillGap();
-                        }
-
-                        if(startedGame)
-                            players_waiting.removeAll(matchedPlayers);
-
-                    }
-
-                    finally {
-                        playerQueueLock.writeLock().unlock();
-                    }
-
-                    if(startedGame) {
-                        Game game = new Game(matchedPlayers, NUMBER_OF_ROUNDS, this.server);
-                        games.add(game);
-                        game.start();
+                    if (matchedPlayersIdx.size() == NUMBER_OF_PLAYERS_PER_GAME) {
+                        startedGame = true;
+                        break;
                     }
                 }
-                else
-                    playerQueueLock.readLock().unlock();
+
+                playerQueueLock.readLock().unlock();
+                List<Player> matchedPlayers = new ArrayList<>();
+                playerQueueLock.writeLock().lock();
+                try {
+                    /*
+                    W   e store indexes rather than the players because the player object can change if someone logs in and replaces the object
+                    in the queue, but the index is always the same since the only change to the queue that can occur between releasing the read lock and
+                    obtaining the write lock is adding a player to the end of the queue
+                     */
+                    for(Integer idx:matchedPlayersIdx){
+                        matchedPlayers.add(players_waiting.get(idx));
+                    }
+                    for(Integer idx:idlePlayersIdx){
+                        if(players_waiting.get(idx).timeSinceDisconnect()>2*60*1000)
+                            players_waiting.remove(idx.intValue());
+                    }
+                    if(startedGame)
+                        players_waiting.removeAll(matchedPlayers);
+
+                    for (Player player : players_waiting) {
+                        player.increaseSkillGap();
+                    }
+                }
+
+                finally {
+                    playerQueueLock.writeLock().unlock();
+                }
+
+                if(startedGame) {
+                    Game game = new Game(matchedPlayers, NUMBER_OF_ROUNDS, this.server);
+                    games.add(game);
+                    game.start();
+                }
 
 
 
