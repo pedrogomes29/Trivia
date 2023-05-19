@@ -1,18 +1,15 @@
 package server;
 
 import java.io.IOException;
-import java.nio.channels.ServerSocketChannel;
 import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 
 
-public class Server extends Thread
+public class Server
 {
     final int NUMBER_OF_PLAYERS_PER_GAME = 2;
     final int NUMBER_OF_ROUNDS = 5;
@@ -73,14 +70,12 @@ public class Server extends Thread
     public void stopServer()
     {
         running = false;
-        this.interrupt();
     }
 
-    @Override
-    public void run()
+    public void startThreads()
     {
         try {
-            Matchmaker matchmaker = new Matchmaker();
+            Matchmaker matchmaker = new Matchmaker(this);
             matchmaker.start();
             Queue socketQueue = new ArrayBlockingQueue(1024); //move 1024 to ServerConfig
 
@@ -99,6 +94,11 @@ public class Server extends Thread
 
 
     private class Matchmaker extends Thread {
+
+        private Server server;
+        public Matchmaker(Server server){
+            this.server = server;
+        }
 
         @Override
         public void run() {
@@ -154,7 +154,7 @@ public class Server extends Thread
                             finally {
                                 playerQueueLock.writeLock().unlock();
                             }
-                            Game game = new Game(matchedPlayers,NUMBER_OF_ROUNDS, db);
+                            Game game = new Game(matchedPlayers,NUMBER_OF_ROUNDS, this.server);
                             games.add(game);
                             game.start();
                             startedGame = true;
@@ -189,7 +189,7 @@ public class Server extends Thread
     public static void main( String[] args )
     {
         Server server = new Server( 8080);
-        server.start();
+        server.startThreads();
         Scanner scanner = new Scanner(System.in);
         String input;
 
@@ -208,7 +208,7 @@ public class Server extends Thread
                         for (Player player : server.players_waiting) {
                             System.out.println(player.getUsername() + " Skill Level: " + player.getSkillLevel() + " Current Skill Gap: " + player.getMaxSkillGap());
                             if(player.timeSinceDisconnect()>=0){
-                                System.out.println("Has been disconnected for" + (System.currentTimeMillis() - player.timeSinceDisconnect()));
+                                System.out.println("Has been disconnected for " + (player.timeSinceDisconnect() / 1000)+ " seconds");
                             }
                         }
                     }

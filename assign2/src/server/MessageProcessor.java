@@ -81,9 +81,9 @@ public class MessageProcessor extends Thread {
                 player.sendMessage("CONNECTION_ESTABLISHED");
                 player.setUsername(username);
                 player.authenticate();
+                player.setSkillLevel(server.db.getSkillLevel(username));
                 if (!server.playerIsPlaying(player) && !server.playerIsWaiting(player)) //function already replaces player if it was playing
                 {
-                    player.setSkillLevel(server.db.getSkillLevel(username));
                     server.playerQueueLock.writeLock().lock();
                     try{
                         server.players_waiting.add(player);
