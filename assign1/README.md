@@ -1,6 +1,6 @@
 ## Report file
 
-[Report](assign1/doc/report_assign1.pdf)
+[Report](doc/report_assign1.pdf)
 
 ## Install and Compile instructions
 
