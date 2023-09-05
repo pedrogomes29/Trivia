@@ -10,8 +10,8 @@ Group members:
 
 ## Assignment 1
 Evaluating the performance of different matrix multiplication algorithms.
-[Assign1 Report](assign1/doc/report_assign1.pdf)
+[Assignment 1 Report](assign1/doc/report_assign1.pdf)
 
 ## Assignment 2
 A simple console based trivia game, developed using a distributed (client-server) architecture using only Java SE.
-[Assign 2](assign2)
+[Assignment 2](assign2)
